@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% block title %}{{ submission.title }}{% endblock %}
+{% block content %}
+<div class="card">
+  <span class="status-badge status-{{ submission.status|lower }}">{{ submission.get_status_display }}</span>
+  <h1>{{ submission.title }}</h1>
+  <p class="muted">
+    {{ submission.primary_author.get_full_name|default:submission.primary_author.username }}
+    {% if submission.department %} · {{ submission.department }}{% endif %}
+    {% if submission.supervisor_name %} · Supervisor: {{ submission.supervisor_name }}{% endif %}
+  </p>
+  <h2>Abstract</h2>
+  <p>{{ submission.abstract }}</p>
+  {% if submission.keyword_list %}
+    <div>
+      {% for k in submission.keyword_list %}<span class="role-badge">{{ k }}</span>{% endfor %}
+    </div>
+  {% endif %}
+
+  <div style="margin-top:16px;">
+    {% if can_submit %}
+      <form method="post" action="{% url 'submissions:submit' pk=submission.pk %}" style="display:inline">
+        {% csrf_token %}<button type="submit">Submit for review</button>
+      </form>
+    {% endif %}
+    {% if can_screen %}
+      <form method="post" action="{% url 'submissions:screen' pk=submission.pk %}" style="display:inline">
+        {% csrf_token %}<button type="submit">Move to Screening</button>
+      </form>
+    {% endif %}
+    {% if can_resubmit %}
+      <form method="post" action="{% url 'submissions:resubmit' pk=submission.pk %}" style="display:inline">
+        {% csrf_token %}<button type="submit">Resubmit revised version</button>
+      </form>
+    {% endif %}
+    {% if can_resume_review %}
+      <form method="post" action="{% url 'submissions:begin_review' pk=submission.pk %}" style="display:inline">
+        {% csrf_token %}<button type="submit">{% if submission.status == "ASSIGNED" %}Begin review{% else %}Resume review{% endif %}</button>
+      </form>
+    {% endif %}
+    {% if can_start_production %}
+      <form method="post" action="{% url 'submissions:start_production' pk=submission.pk %}" style="display:inline">
+        {% csrf_token %}<button type="submit">Start production</button>
+      </form>
+    {% endif %}
+    {% if can_mark_ready %}
+      <form method="post" action="{% url 'submissions:mark_ready' pk=submission.pk %}" style="display:inline">
+        {% csrf_token %}<button type="submit">Mark ready to publish</button>
+      </form>
+    {% endif %}
+    {% if can_publish %}
+      <form method="post" action="{% url 'submissions:publish' pk=submission.pk %}" style="display:inline">
+        {% csrf_token %}<button type="submit">Publish</button>
+      </form>
+    {% endif %}
+    {% if can_withdraw %}
+      <form method="post" action="{% url 'submissions:withdraw' pk=submission.pk %}" style="display:inline">
+        {% csrf_token %}<button type="submit" style="background:#c0392b;">Withdraw</button>
+      </form>
+    {% endif %}
+  </div>
+  {% if submission.status == "PUBLISHED" %}
+    <p class="muted" style="margin-top:12px;">
+      Live on the public site: <a href="{% url 'projects:detail' slug=submission.slug %}">{{ submission.get_absolute_url }}</a>
+    </p>
+  {% endif %}
+</div>
+
+{% if can_assign_reviewer %}
+<div class="card">
+  <h2>Assign a reviewer</h2>
+  <form method="post" action="{% url 'submissions:assign_reviewer' pk=submission.pk %}">
+    {% csrf_token %}
+    <label for="{{ assign_form.reviewer.id_for_label }}">Reviewer</label>
+    {{ assign_form.reviewer }}
+    <p class="muted">{{ assign_form.reviewer.help_text }}</p>
+    <button type="submit">Assign</button>
+  </form>
+</div>
+{% endif %}
+
+{% if can_review %}
+<div class="card">
+  <h2>Submit your review</h2>
+  <form method="post" action="{% url 'submissions:submit_review' pk=submission.pk %}">
+    {% csrf_token %}
+    <label for="{{ review_form.decision.id_for_label }}">Decision</label>
+    {{ review_form.decision }}
+    <label for="{{ review_form.comments.id_for_label }}">Comments to the author</label>
+    {{ review_form.comments }}
+    <button type="submit">Submit decision</button>
+  </form>
+</div>
+{% endif %}
+
+{% if can_upload %}
+<div class="card">
+  <h2>Upload a new version</h2>
+  <div style="background: #e7f5ff; border: 1px solid #74c0fc; border-left: 4px solid #1c7ed6; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; color: #1864ab;">
+    <strong>Upload Instruction:</strong> Please include a PDF file named <strong>Technical Design Brief.pdf</strong> (or <strong>Design Brief.pdf</strong>) inside your uploaded package (.zip archive or .pdf). The system will automatically compile it into responsive, interactive HTML for publication.
+  </div>
+  <form method="post" action="{% url 'submissions:upload_version' pk=submission.pk %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <label for="{{ upload_form.file.id_for_label }}">Submission package (.zip or .pdf)</label>
+    {{ upload_form.file }}
+    <p class="muted">{{ upload_form.file.help_text }}</p>
+    <label for="{{ upload_form.notes.id_for_label }}">Notes</label>
+    {{ upload_form.notes }}
+    <button type="submit">Upload version</button>
+  </form>
+</div>
+{% endif %}
+
+{% if compiled_html %}
+<div class="card" style="margin-top: 24px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #e1e4e8; padding-bottom: 12px;">
+    <div>
+      <h2 style="margin: 0; font-size: 18px;">Compiled Technical Design Brief Preview</h2>
+      <span class="muted" style="font-size: 12px;">Preview of the interactive HTML document as it will appear when published.</span>
+    </div>
+    {% if can_recompile %}
+      <form method="post" action="{% url 'submissions:recompile' pk=submission.pk %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn" style="background: #f6f8fa; color: #24292e; border: 1px solid #d0d7de; padding: 4px 12px; font-size: 13px;">Recompile HTML</button>
+      </form>
+    {% endif %}
+  </div>
+  {{ compiled_html|safe }}
+</div>
+{% endif %}
+
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <h2>Versions</h2>
+    {% if can_recompile and not compiled_html %}
+      <form method="post" action="{% url 'submissions:recompile' pk=submission.pk %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn" style="background: #f6f8fa; color: #24292e; border: 1px solid #d0d7de; padding: 4px 12px; font-size: 13px;">Compile HTML</button>
+      </form>
+    {% endif %}
+  </div>
+  {% for v in versions %}
+    <div style="padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+      <p style="margin: 0 0 4px;">
+        <strong>v{{ v.version_number }}</strong> — <a href="{{ v.file.url }}">{{ v.file.name|slice:"-40:" }}</a>
+        <span class="muted">uploaded {{ v.uploaded_at|date:"M j, Y H:i" }} by {{ v.uploaded_by }}</span>
+        {% if v.compilation_status == "COMPILED" %}
+          <span class="role-badge" style="background:#dafbe1; color:#1a7f37; border-color:#aceebb; margin-left: 8px;">HTML Compiled: {{ v.brief_filename }}</span>
+        {% elif v.compilation_status == "NOT_FOUND" %}
+          <span class="role-badge" style="background:#fff8c5; color:#9a6700; border-color:#d4a72c; margin-left: 8px;">Design Brief PDF Not Found</span>
+        {% elif v.compilation_status == "FAILED" %}
+          <span class="role-badge" style="background:#ffebe9; color:#cf222e; border-color:#ff8182; margin-left: 8px;">Compilation Failed</span>
+        {% endif %}
+      </p>
+      {% if v.compilation_error %}
+        <p class="muted" style="color: #b54900; font-size: 13px; margin: 2px 0;">Notice: {{ v.compilation_error }}</p>
+      {% endif %}
+      {% if v.notes %}
+        <p class="muted" style="margin: 2px 0;">Notes: {{ v.notes }}</p>
+      {% endif %}
+    </div>
+  {% empty %}
+    <p class="muted">No files uploaded yet.</p>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>Review history</h2>
+  {% for rev in reviews %}
+    <p class="muted">
+      Round {{ rev.round }} — {{ rev.reviewer }} —
+      <strong>{{ rev.get_decision_display }}</strong>
+      {% if rev.decided_at %} on {{ rev.decided_at|date:"M j, Y" }}{% endif %}
+      {% if rev.comments %}<br>{{ rev.comments }}{% endif %}
+    </p>
+  {% empty %}
+    <p class="muted">No reviews yet.</p>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>History</h2>
+  {% for entry in audit_log %}
+    <p class="muted">
+      {{ entry.timestamp|date:"M j, Y H:i" }} — <strong>{{ entry.action }}</strong>
+      {% if entry.from_status %}({{ entry.from_status }} → {{ entry.to_status }}){% endif %}
+      by {{ entry.user|default:"system" }}
+      {% if entry.message %}— {{ entry.message }}{% endif %}
+    </p>
+  {% empty %}
+    <p class="muted">No history yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

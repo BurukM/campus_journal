@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% block title %}{{ article.title }} · Campus News{% endblock %}
+
+{% block content %}
+<style>
+  .container {
+    max-width: 900px !important;
+  }
+
+  .article-container-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 40px 36px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  }
+
+  .article-header {
+    margin-bottom: 28px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .article-byline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 14px;
+    color: var(--muted);
+    margin-top: 18px;
+  }
+
+  .author-badge-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .author-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .article-featured-image {
+    width: 100%;
+    max-height: 480px;
+    object-fit: cover;
+    border-radius: 10px;
+    display: block;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+  }
+
+  .image-caption {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+    margin-top: 8px;
+    text-align: center;
+  }
+
+  .article-prose {
+    font-size: 17px;
+    line-height: 1.8;
+    color: #1e293b;
+    margin: 32px 0;
+  }
+
+  .article-prose h2 {
+    font-size: 24px;
+    font-weight: 800;
+    margin-top: 40px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+    color: var(--ink);
+  }
+
+  .article-prose h3 {
+    font-size: 19px;
+    font-weight: 700;
+    margin-top: 32px;
+    margin-bottom: 10px;
+    color: var(--ink);
+  }
+
+  .article-prose p {
+    margin-bottom: 22px;
+  }
+
+  .article-prose blockquote {
+    margin: 28px 0;
+    padding: 16px 24px;
+    background: #f8fafc;
+    border-left: 4px solid var(--accent);
+    color: #334155;
+    font-style: italic;
+    border-radius: 0 8px 8px 0;
+  }
+
+  .article-prose ul, .article-prose ol {
+    margin-bottom: 22px;
+    padding-left: 28px;
+  }
+
+  .article-prose li {
+    margin-bottom: 8px;
+  }
+
+  .article-prose img {
+    max-width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .related-research-card {
+    background: #f8fafc;
+    border: 1px solid #bfdbfe;
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .related-research-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+  }
+
+  .more-stories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 18px;
+    margin-top: 18px;
+  }
+
+  .more-story-item {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .more-story-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+</style>
+
+<div style="margin-bottom: 18px;">
+  <a href="{% url 'news:list' %}" style="text-decoration: none; font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px;">
+    <span>&larr;</span>
+    <span>Back to Campus News</span>
+  </a>
+</div>
+
+<article class="article-container-card">
+  <div class="article-header">
+    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+      {% if article.category %}
+        <a href="{% url 'news:list' %}?category={{ article.category.slug }}" style="text-decoration: none;">
+          <span class="role-badge">{{ article.category.name }}</span>
+        </a>
+      {% endif %}
+      {% if article.status != "PUBLISHED" %}
+        <span class="status-badge status-draft" style="margin: 0;">{{ article.get_status_display }}</span>
+      {% endif %}
+    </div>
+
+    <h1 style="font-size: 34px; line-height: 1.25; margin: 10px 0 12px; color: var(--ink);">{{ article.title }}</h1>
+
+    {% if article.subtitle %}
+      <p style="font-size: 18px; color: #475569; line-height: 1.5; margin: 0 0 16px;">
+        {{ article.subtitle }}
+      </p>
+    {% endif %}
+
+    <div class="article-byline">
+      <div class="author-badge-group">
+        <span class="author-avatar">
+          {{ article.author.first_name|default:article.author.username|slice:":1"|upper }}
+        </span>
+        <div>
+          <a href="{% url 'accounts:profile_detail' username=article.author.username %}" style="color: var(--ink); font-weight: 600; text-decoration: none;">
+            {{ article.author.get_full_name|default:article.author.username }}
+          </a>
+          {% if article.published_at %}
+            <span class="muted" style="display: block; font-size: 12px;">Published {{ article.published_at|date:"F j, Y" }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="background: #f1f5f9; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 500;">
+          {{ article.reading_time_minutes }} min read
+        </span>
+        {% if is_news_editor %}
+          <a href="{% url 'news:edit' slug=article.slug %}" class="btn btn-secondary" style="margin-top: 0; padding: 5px 12px; font-size: 12px;">
+            Edit Story
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if article.featured_image %}
+    <div style="margin: 28px 0 36px;">
+      <img src="{{ article.featured_image.url }}" alt="{{ article.title }}" class="article-featured-image">
+      {% if article.featured_image_caption %}
+        <p class="image-caption">{{ article.featured_image_caption }}</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- Markdown-compiled article content -->
+  <div class="article-prose">
+    {{ content_html|safe }}
+  </div>
+
+  <!-- Related Campus Research Projects -->
+  {% if related_submissions %}
+    <div style="margin-top: 44px; padding-top: 28px; border-top: 2px solid var(--line);">
+      <h3 style="margin-bottom: 14px; font-size: 18px; color: var(--ink); display: flex; align-items: center; gap: 8px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+        </svg>
+        <span>Featured Campus Research Behind This Story</span>
+      </h3>
+      {% for sub in related_submissions %}
+        <div class="related-research-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span class="status-badge status-published" style="font-size: 10px; margin: 0; padding: 1px 7px;">Published Research</span>
+            {% if sub.department %}<span class="muted" style="font-size: 11px;">{{ sub.department.name }}</span>{% endif %}
+          </div>
+          <h4 style="margin: 6px 0; font-size: 16px; font-weight: 700;">
+            <a href="{% url 'projects:detail' slug=sub.slug %}" style="color: var(--accent); text-decoration: none;">
+              {{ sub.title }}
+            </a>
+          </h4>
+          <p class="muted" style="margin: 0; font-size: 12px;">
+            By {{ sub.primary_author.get_full_name|default:sub.primary_author.username }}
+          </p>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</article>
+
+<!-- More Related Stories -->
+{% if related_stories %}
+  <div class="card" style="margin-top: 28px; padding: 28px;">
+    <h3 style="margin-top: 0; margin-bottom: 14px; font-size: 18px;">More Campus Stories</h3>
+    <div class="more-stories-grid">
+      {% for rs in related_stories %}
+        <div class="more-story-item">
+          <h4 style="margin: 0 0 6px; font-size: 14px; line-height: 1.4;">
+            <a href="{% url 'news:detail' slug=rs.slug %}" style="color: var(--ink); text-decoration: none;">
+              {{ rs.title }}
+            </a>
+          </h4>
+          <p class="muted" style="font-size: 12px; margin: 0;">
+            {{ rs.published_at|date:"M j, Y" }}
+          </p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

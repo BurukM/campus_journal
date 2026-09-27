@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Application Submitted · Campus Journal{% endblock %}
+
+{% block content %}
+<style>
+  .pending-card {
+    max-width: 620px;
+    margin: 20px auto;
+    padding: 40px 32px;
+    text-align: center;
+  }
+  .pending-icon-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #fef3c7;
+    color: #b45309;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+</style>
+
+<div class="card pending-card">
+  <div class="pending-icon-circle">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <polyline points="12 6 12 12 16 14"></polyline>
+    </svg>
+  </div>
+
+  <span class="role-badge" style="background:#fef3c7; color:#b45309; border-color:#fde68a; margin-bottom: 12px;">
+    Pending Administrator Approval
+  </span>
+
+  <h1 style="font-size: 26px; margin: 8px 0 14px;">Application Received</h1>
+
+  <p style="font-size: 15px; color: #475569; line-height: 1.6; margin: 0 0 20px;">
+    Thank you, <strong>{{ new_user.first_name|default:new_user.username }}</strong>! Your registration and request for the
+    <strong>{{ requested_role.name }}</strong> role has been submitted to the editorial administration.
+  </p>
+
+  <div style="background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 18px; margin: 20px 0; text-align: left; font-size: 13px;">
+    <div style="margin-bottom: 8px;">
+      <span class="muted">Username:</span>
+      <strong>{{ new_user.username }}</strong>
+    </div>
+    <div style="margin-bottom: 8px;">
+      <span class="muted">Email:</span>
+      <span>{{ new_user.email }}</span>
+    </div>
+    <div style="margin-bottom: 8px;">
+      <span class="muted">Requested Role:</span>
+      <span class="role-badge" style="font-size: 11px;">{{ requested_role.name }}</span>
+    </div>
+    {% if department %}
+      <div style="margin-bottom: 8px;">
+        <span class="muted">Department:</span>
+        <span>{{ department.name }}</span>
+      </div>
+    {% endif %}
+    {% if affiliation_note %}
+      <div>
+        <span class="muted">Affiliation Note:</span>
+        <span>{{ affiliation_note }}</span>
+      </div>
+    {% endif %}
+  </div>
+
+  <p class="muted" style="font-size: 13px; line-height: 1.5; margin: 0 0 24px;">
+    To maintain peer-review integrity and academic governance, staff and reviewer accounts require administrator verification.
+    You will receive access to log in once your application has been verified.
+  </p>
+
+  <div style="display: flex; justify-content: center; gap: 12px;">
+    <a href="/" class="btn btn-secondary">Return to Homepage</a>
+    <a href="{% url 'accounts:login' %}" class="btn">Go to Login</a>
+  </div>
+</div>
+{% endblock %}

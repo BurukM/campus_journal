@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Review Queue{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Review Queue</h1>
+  <p class="muted">Everything currently or previously assigned to you.</p>
+</div>
+
+{% for rev in reviews %}
+<div class="card">
+  <h2><a href="{% url 'submissions:detail' pk=rev.submission.pk %}">{{ rev.submission.title }}</a></h2>
+  <span class="status-badge status-{{ rev.submission.status|lower }}">{{ rev.submission.get_status_display }}</span>
+  <p class="muted">Round {{ rev.round }} · assigned {{ rev.assigned_at|date:"M j, Y" }}
+    {% if rev.decided_at %} · decided: {{ rev.get_decision_display }}{% endif %}
+  </p>
+</div>
+{% empty %}
+<div class="card"><p class="muted">No reviews assigned to you yet.</p></div>
+{% endfor %}
+{% endblock %}

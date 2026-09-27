@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+{% block title %}Campus Research Journal &amp; News · Open Scholarship Platform{% endblock %}
+
+{% block content %}
+<style>
+  .container {
+    max-width: 1140px !important;
+  }
+
+  /* Home Hero Card */
+  .home-hero-card {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-radius: 14px;
+    padding: 44px 36px;
+    margin-bottom: 40px;
+    box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.15);
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .home-hero-card::after {
+    content: "";
+    position: absolute;
+    top: -60px;
+    right: -60px;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.3) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .home-hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 780px;
+  }
+
+  .hero-quick-search {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+    max-width: 600px;
+  }
+
+  .hero-quick-search input {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 15px;
+    color: #0f172a;
+    flex-grow: 1;
+  }
+
+  .home-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--line);
+  }
+
+  .home-section-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .home-section-link {
+    font-size: 14px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: gap 0.15s ease;
+  }
+
+  .home-section-link:hover {
+    gap: 8px;
+  }
+
+  /* News Grid */
+  .home-news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+    margin-bottom: 48px;
+  }
+
+  .home-news-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease;
+  }
+
+  .home-news-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.08);
+    border-color: #cbd5e1;
+  }
+
+  .home-news-card-img-wrap {
+    height: 170px;
+    overflow: hidden;
+    background: #f1f5f9;
+  }
+
+  .home-news-card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+  }
+
+  .home-news-card:hover .home-news-card-img {
+    transform: scale(1.03);
+  }
+
+  .home-news-card-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+
+  /* Projects Grid */
+  .home-projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+    margin-bottom: 48px;
+  }
+
+  .home-project-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    border-radius: 10px;
+    padding: 24px 22px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .home-project-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px -4px rgba(37, 99, 235, 0.1);
+  }
+</style>
+
+<!-- Hero Section -->
+<div class="home-hero-card">
+  <div class="home-hero-content">
+    <span class="role-badge" style="background: rgba(37, 99, 235, 0.35); color: #93c5fd; border: 1px solid rgba(147, 197, 253, 0.3); margin-bottom: 12px;">
+      University Open Access Publishing
+    </span>
+    <h1 style="color: #ffffff; font-size: 34px; line-height: 1.2; margin: 8px 0 14px;">
+      Groundbreaking Campus Research &amp; Technology News
+    </h1>
+    <p style="font-size: 16px; color: #94a3b8; line-height: 1.6; margin: 0 0 20px;">
+      A peer-reviewed academic platform showcasing student breakthroughs, engineering design briefs, faculty research, and campus innovation—freely accessible to everyone.
+    </p>
+
+    <!-- Global Search -->
+    <form method="get" action="{% url 'search' %}" class="hero-quick-search">
+      <input type="text" name="q" placeholder="Search research papers, design briefs, keywords, authors..." autofocus>
+      <button type="submit" class="btn" style="margin-top: 0; padding: 12px 22px;">Search</button>
+    </form>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; align-items: center;">
+      <a href="{% url 'projects:list' %}" class="btn" style="background: #ffffff; color: var(--ink); border: none; margin-top: 0; padding: 10px 18px; font-weight: 600;">
+        Browse All Research &rarr;
+      </a>
+      <a href="{% url 'news:list' %}" class="btn" style="background: rgba(255,255,255,0.12); color: #ffffff; border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(4px); margin-top: 0; padding: 10px 18px;">
+        Read Campus News
+      </a>
+      {% if not user.is_authenticated %}
+        <a href="{% url 'accounts:signup' %}" style="color: #cbd5e1; font-size: 13px; text-decoration: none; margin-left: 8px;">
+          Submit a paper &rarr;
+        </a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Latest News Section (Public, No Login Needed) -->
+<div style="margin-bottom: 40px;">
+  <div class="home-section-header">
+    <h2 class="home-section-title">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #10b981;">
+        <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path>
+      </svg>
+      <span>Latest Campus News &amp; Technology</span>
+    </h2>
+    <a href="{% url 'news:list' %}" class="home-section-link">
+      <span>View all stories</span>
+      <span>&rarr;</span>
+    </a>
+  </div>
+
+  {% if latest_news %}
+    <div class="home-news-grid">
+      {% for art in latest_news %}
+        <div class="home-news-card">
+          <div class="home-news-card-img-wrap">
+            {% if art.featured_image %}
+              <a href="{% url 'news:detail' slug=art.slug %}">
+                <img src="{{ art.featured_image.url }}" alt="{{ art.title }}" class="home-news-card-img">
+              </a>
+            {% else %}
+              <div style="height: 100%; background: linear-gradient(135deg, #1e3a8a, #2563eb); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 28px;">
+                📰
+              </div>
+            {% endif %}
+          </div>
+          <div class="home-news-card-body">
+            {% if art.category %}
+              <div style="margin-bottom: 6px;">
+                <span class="role-badge" style="font-size: 11px; padding: 2px 8px;">{{ art.category.name }}</span>
+              </div>
+            {% endif %}
+            <h3 style="font-size: 17px; font-weight: 700; line-height: 1.35; margin: 4px 0 8px;">
+              <a href="{% url 'news:detail' slug=art.slug %}" style="color: var(--ink); text-decoration: none;">
+                {{ art.title }}
+              </a>
+            </h3>
+            <p style="font-size: 13px; color: #475569; line-height: 1.5; margin: 0 0 14px; flex-grow: 1;">
+              {{ art.subtitle|default:art.content|truncatewords:18 }}
+            </p>
+            <div style="font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding-top: 10px;">
+              <span>{{ art.published_at|date:"M j, Y" }}</span>
+              <span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">{{ art.reading_time_minutes }} min read</span>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card" style="padding: 32px; text-align: center;">
+      <p class="muted" style="margin: 0;">No campus news published yet. Stay tuned for upcoming announcements.</p>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Published Research Section (Public, No Login Needed) -->
+<div style="margin-bottom: 40px;">
+  <div class="home-section-header">
+    <h2 class="home-section-title">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+      </svg>
+      <span>Featured Published Research</span>
+    </h2>
+    <a href="{% url 'projects:list' %}" class="home-section-link">
+      <span>View all research papers</span>
+      <span>&rarr;</span>
+    </a>
+  </div>
+
+  {% if published_projects %}
+    <div class="home-projects-grid">
+      {% for proj in published_projects %}
+        <div class="home-project-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span class="status-badge status-published" style="margin: 0; font-size: 11px;">Peer Reviewed</span>
+            {% if proj.department %}
+              <span class="role-badge" style="margin: 0; font-size: 11px;">{{ proj.department.short_name|default:proj.department.name }}</span>
+            {% endif %}
+          </div>
+          <h3 style="font-size: 18px; font-weight: 700; line-height: 1.35; margin: 6px 0 8px;">
+            <a href="{% url 'projects:detail' slug=proj.slug %}" style="color: var(--ink); text-decoration: none;">
+              {{ proj.title }}
+            </a>
+          </h3>
+          <p class="muted" style="font-size: 12px; margin: 0 0 10px;">
+            By <strong>{{ proj.primary_author.get_full_name|default:proj.primary_author.username }}</strong> · {{ proj.published_at|date:"M j, Y" }}
+          </p>
+          <p style="font-size: 13px; color: #475569; line-height: 1.55; margin: 0 0 16px; flex-grow: 1;">
+            {{ proj.abstract|truncatewords:24 }}
+          </p>
+          <div style="border-top: 1px solid #f1f5f9; padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <a href="{% url 'projects:detail' slug=proj.slug %}" style="font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none;">
+              Read Design Brief &rarr;
+            </a>
+            <span class="muted" style="font-size: 12px;">Ref: CJ-{{ proj.id|stringformat:"04d" }}</span>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card" style="padding: 32px; text-align: center;">
+      <p class="muted" style="margin: 0;">No research projects published yet.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

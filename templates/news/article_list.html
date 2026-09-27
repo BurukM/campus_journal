@@ -1,0 +1,358 @@
+{% extends "base.html" %}
+{% block title %}Campus News &amp; Technology Stories · Campus Journal{% endblock %}
+
+{% block content %}
+<style>
+  .container {
+    max-width: 1140px !important;
+  }
+
+  .news-hero-section {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-radius: 14px;
+    padding: 36px 32px;
+    color: #ffffff;
+    margin-bottom: 28px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .news-hero-section::after {
+    content: "";
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 240px;
+    height: 240px;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .news-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .news-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+
+  .filter-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    background: #ffffff;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    transition: all 0.15s ease;
+  }
+
+  .filter-pill:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .filter-pill.active {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* Featured Lead Story */
+  .featured-story-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 32px;
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .featured-story-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.08);
+  }
+
+  .featured-image-container {
+    height: 100%;
+    min-height: 320px;
+    background: #e2e8f0;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .featured-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+  }
+
+  .featured-story-card:hover .featured-image {
+    transform: scale(1.02);
+  }
+
+  .featured-body {
+    padding: 36px 30px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  /* News Grid */
+  .news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+  }
+
+  .news-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease;
+  }
+
+  .news-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px -4px rgba(0, 0, 0, 0.08);
+    border-color: #cbd5e1;
+  }
+
+  .news-card-img-wrapper {
+    overflow: hidden;
+    height: 190px;
+    background: #f1f5f9;
+  }
+
+  .news-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease;
+  }
+
+  .news-card:hover .news-card-image {
+    transform: scale(1.03);
+  }
+
+  .news-card-body {
+    padding: 22px 20px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+
+  .news-card-title {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.35;
+    margin: 8px 0 8px;
+  }
+
+  .news-card-title a {
+    color: var(--ink);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .news-card-title a:hover {
+    color: var(--accent);
+  }
+
+  .news-card-deck {
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.55;
+    margin-bottom: 16px;
+    flex-grow: 1;
+  }
+
+  .news-card-meta {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 12px;
+  }
+
+  @media (max-width: 820px) {
+    .featured-story-card {
+      grid-template-columns: 1fr;
+    }
+    .featured-image-container {
+      height: 220px;
+      min-height: 220px;
+    }
+    .news-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="news-hero-section">
+  <div class="news-header-flex">
+    <div>
+      <span class="role-badge" style="background: rgba(16, 185, 129, 0.25); color: #6ee7b7; border: 1px solid rgba(110, 231, 183, 0.3); margin-bottom: 10px;">
+        Campus Newsroom &amp; Editorial
+      </span>
+      <h1 style="color: #ffffff; margin: 8px 0 10px; font-size: 32px;">Campus News &amp; Technology</h1>
+      <p style="color: #94a3b8; margin: 0; font-size: 15px; max-width: 680px; line-height: 1.6;">
+        Spotlights on campus research breakthroughs, engineering innovations, lab milestones, and academic features.
+      </p>
+    </div>
+    {% if is_news_editor %}
+      <div style="display: flex; gap: 8px;">
+        <a href="{% url 'news:desk' %}" class="btn" style="background: rgba(255,255,255,0.15); color: #ffffff; border: 1px solid rgba(255,255,255,0.25); backdrop-filter: blur(4px);">
+          Editorial Desk
+        </a>
+        <a href="{% url 'news:create' %}" class="btn">
+          + Write Article
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Category Filters -->
+<div class="news-filters">
+  <a href="{% url 'news:list' %}" class="filter-pill {% if not selected_category %}active{% endif %}">
+    All Stories
+  </a>
+  {% for cat in categories %}
+    <a href="{% url 'news:list' %}?category={{ cat.slug }}" class="filter-pill {% if selected_category.slug == cat.slug %}active{% endif %}">
+      {{ cat.name }} ({{ cat.article_count }})
+    </a>
+  {% endfor %}
+</div>
+
+<!-- Featured Article (Lead Story) -->
+{% if featured_article %}
+  <div class="featured-story-card">
+    <div class="featured-image-container">
+      {% if featured_article.featured_image %}
+        <a href="{% url 'news:detail' slug=featured_article.slug %}">
+          <img src="{{ featured_article.featured_image.url }}" alt="{{ featured_article.title }}" class="featured-image">
+        </a>
+      {% else %}
+        <div style="height: 100%; min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.85; margin-bottom: 8px;">
+            <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path>
+            <path d="M18 14h-8"></path>
+            <path d="M15 18h-5"></path>
+            <path d="M10 6h8v4h-8V6Z"></path>
+          </svg>
+          <span style="font-size: 13px; font-weight: 600; opacity: 0.9;">Featured Campus Story</span>
+        </div>
+      {% endif %}
+    </div>
+    <div class="featured-body">
+      {% if featured_article.category %}
+        <div style="margin-bottom: 8px;">
+          <span class="role-badge" style="background: #eff6ff; color: #2563eb; border-color: #bfdbfe;">
+            {{ featured_article.category.name }}
+          </span>
+        </div>
+      {% endif %}
+      <h2 style="font-size: 26px; line-height: 1.3; margin: 4px 0 12px;">
+        <a href="{% url 'news:detail' slug=featured_article.slug %}" style="color: var(--ink); text-decoration: none;">
+          {{ featured_article.title }}
+        </a>
+      </h2>
+      <p style="font-size: 15px; color: #475569; line-height: 1.6; margin-bottom: 20px;">
+        {{ featured_article.subtitle|default:featured_article.content|truncatewords:32 }}
+      </p>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted); border-top: 1px solid #f1f5f9; padding-top: 14px;">
+        <span>By <strong>{{ featured_article.author.get_full_name|default:featured_article.author.username }}</strong> · {{ featured_article.published_at|date:"M j, Y" }}</span>
+        <span style="background: #f1f5f9; padding: 3px 8px; border-radius: 4px; font-weight: 500;">
+          {{ featured_article.reading_time_minutes }} min read
+        </span>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<!-- Remaining Articles Grid -->
+{% if articles %}
+  <div class="news-grid">
+    {% for art in articles %}
+      <div class="news-card">
+        <div class="news-card-img-wrapper">
+          {% if art.featured_image %}
+            <a href="{% url 'news:detail' slug=art.slug %}">
+              <img src="{{ art.featured_image.url }}" alt="{{ art.title }}" class="news-card-image">
+            </a>
+          {% else %}
+            <div style="height: 100%; background: linear-gradient(135deg, #f1f5f9, #e2e8f0); display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b;">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 4px;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+              <span style="font-size: 11px; font-weight: 600;">Campus Story</span>
+            </div>
+          {% endif %}
+        </div>
+        <div class="news-card-body">
+          {% if art.category %}
+            <div style="margin-bottom: 6px;">
+              <span class="role-badge" style="font-size: 11px; padding: 1px 7px;">{{ art.category.name }}</span>
+            </div>
+          {% endif %}
+          <h3 class="news-card-title">
+            <a href="{% url 'news:detail' slug=art.slug %}">{{ art.title }}</a>
+          </h3>
+          <p class="news-card-deck">
+            {{ art.subtitle|default:art.content|truncatewords:20 }}
+          </p>
+          <div class="news-card-meta">
+            <span>{{ art.published_at|date:"M j, Y" }}</span>
+            <span style="background: #f1f5f9; padding: 2px 7px; border-radius: 4px; font-size: 11px;">
+              {{ art.reading_time_minutes }} min read
+            </span>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% elif not featured_article %}
+  <div class="card" style="text-align: center; padding: 48px 24px;">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; margin-bottom: 10px;">
+      <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path>
+    </svg>
+    <h3 style="margin: 0 0 6px;">No articles published yet</h3>
+    <p class="muted" style="margin: 0 0 16px;">Check back soon for campus innovation stories and tech features.</p>
+    {% if is_news_editor %}
+      <a href="{% url 'news:create' %}" class="btn">+ Write First Article</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

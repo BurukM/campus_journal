@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Submission Queue{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Submission Queue</h1>
+  <p class="muted">All non-draft submissions, most recently updated first.</p>
+</div>
+
+{% for s in submissions %}
+<div class="card">
+  <h2><a href="{% url 'submissions:detail' pk=s.pk %}">{{ s.title }}</a></h2>
+  <span class="status-badge status-{{ s.status|lower }}">{{ s.get_status_display }}</span>
+  <p class="muted">
+    {{ s.primary_author.get_full_name|default:s.primary_author.username }}
+    {% if s.department %} · {{ s.department }}{% endif %}
+    · updated {{ s.updated_at|date:"M j, Y" }}
+  </p>
+</div>
+{% empty %}
+<div class="card"><p class="muted">Nothing in the queue yet.</p></div>
+{% endfor %}
+{% endblock %}

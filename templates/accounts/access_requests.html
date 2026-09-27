@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}User Access Requests · Campus Journal{% endblock %}
+
+{% block content %}
+<style>
+  .container {
+    max-width: 1040px !important;
+  }
+
+  .requests-header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .filter-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .filter-tab-pill {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    transition: all 0.15s ease;
+  }
+
+  .filter-tab-pill:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .filter-tab-pill.active {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  .access-request-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+    transition: box-shadow 0.15s ease;
+  }
+
+  .access-request-card:hover {
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+  }
+
+  .request-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .applicant-name {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .applicant-meta {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 4px 0 0;
+  }
+
+  .justification-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid var(--accent);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #334155;
+    line-height: 1.5;
+    margin: 12px 0 16px;
+  }
+
+  .request-action-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #f1f5f9;
+    padding-top: 14px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+</style>
+
+<!-- Header -->
+<div class="requests-header-section">
+  <div>
+    <h1 style="margin: 0 0 6px; font-size: 28px;">User Access Requests</h1>
+    <p class="muted" style="margin: 0;">
+      Review and approve self-service registration applications for Reviewer, Editorial Staff, and Administrator roles.
+    </p>
+  </div>
+  <a href="{% url 'accounts:dashboard' %}" class="btn btn-secondary" style="margin-top: 0; font-size: 13px;">
+    &larr; Back to Dashboard
+  </a>
+</div>
+
+<!-- Filter Tabs -->
+<div class="filter-tabs">
+  <a href="{% url 'accounts:access_requests' %}?status=PENDING" class="filter-tab-pill {% if filter_status == 'PENDING' %}active{% endif %}">
+    Pending ({{ pending_count }})
+  </a>
+  <a href="{% url 'accounts:access_requests' %}?status=APPROVED" class="filter-tab-pill {% if filter_status == 'APPROVED' %}active{% endif %}">
+    Approved ({{ approved_count }})
+  </a>
+  <a href="{% url 'accounts:access_requests' %}?status=REJECTED" class="filter-tab-pill {% if filter_status == 'REJECTED' %}active{% endif %}">
+    Declined ({{ rejected_count }})
+  </a>
+  <a href="{% url 'accounts:access_requests' %}?status=ALL" class="filter-tab-pill {% if filter_status == 'ALL' %}active{% endif %}">
+    All Applications
+  </a>
+</div>
+
+<!-- Request List -->
+{% if requests %}
+  {% for req in requests %}
+    <div class="access-request-card">
+      <div class="request-card-header">
+        <div>
+          <h2 class="applicant-name">
+            {{ req.user.get_full_name|default:req.user.username }}
+          </h2>
+          <p class="applicant-meta">
+            Username: <strong>{{ req.user.username }}</strong> · Email: <a href="mailto:{{ req.user.email }}" style="color: var(--accent); text-decoration: none;">{{ req.user.email }}</a>
+            · Applied {{ req.created_at|date:"M j, Y, g:i a" }}
+          </p>
+        </div>
+        <div>
+          {% if req.status == 'PENDING' %}
+            <span class="status-badge" style="background:#fef3c7; color:#b45309; margin: 0;">Pending Review</span>
+          {% elif req.status == 'APPROVED' %}
+            <span class="status-badge status-published" style="margin: 0;">Approved</span>
+          {% elif req.status == 'REJECTED' %}
+            <span class="status-badge" style="background:#fee2e2; color:#b91c1c; margin: 0;">Declined</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap;">
+        <span style="font-size: 13px; font-weight: 600; color: var(--muted);">Requested Role:</span>
+        <span class="role-badge" style="font-size: 12px;">{{ req.requested_role.name }}</span>
+        {% if req.department %}
+          <span style="font-size: 13px; font-weight: 600; color: var(--muted); margin-left: 8px;">Department:</span>
+          <span class="role-badge" style="background:#f1f5f9; color:#475569; border-color:#cbd5e1; font-size: 12px;">
+            {{ req.department.name }}
+          </span>
+        {% endif %}
+      </div>
+
+      {% if req.affiliation_note %}
+        <div class="justification-box">
+          <strong style="display: block; font-size: 11px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px;">
+            Affiliation &amp; Justification Note:
+          </strong>
+          {{ req.affiliation_note }}
+        </div>
+      {% endif %}
+
+      <div class="request-action-row">
+        <div>
+          {% if req.status != 'PENDING' and req.reviewed_by %}
+            <span class="muted" style="font-size: 12px;">
+              Reviewed by <strong>{{ req.reviewed_by.get_full_name|default:req.reviewed_by.username }}</strong> on {{ req.reviewed_at|date:"M j, Y, g:i a" }}
+            </span>
+          {% else %}
+            <span class="muted" style="font-size: 12px;">
+              User account is currently inactive until approved.
+            </span>
+          {% endif %}
+        </div>
+
+        {% if req.status == 'PENDING' %}
+          <div style="display: flex; gap: 8px;">
+            <!-- Reject Form -->
+            <form method="post" action="{% url 'accounts:reject_access_request' pk=req.pk %}" onsubmit="return confirm('Are you sure you want to decline this request?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-secondary" style="margin-top: 0; padding: 7px 14px; font-size: 13px; color: #dc2626; border-color: #fca5a5;">
+                Decline
+              </button>
+            </form>
+
+            <!-- Approve Form -->
+            <form method="post" action="{% url 'accounts:approve_access_request' pk=req.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="btn" style="margin-top: 0; padding: 7px 18px; font-size: 13px; background: #16a34a;">
+                ✓ Grant Access
+              </button>
+            </form>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="card" style="text-align: center; padding: 48px 20px;">
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; margin-bottom: 10px;">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+      <circle cx="9" cy="7" r="4"></circle>
+      <polyline points="16 11 18 13 22 9"></polyline>
+    </svg>
+    <h3 style="margin: 0 0 6px;">No requests found</h3>
+    <p class="muted" style="margin: 0;">
+      {% if filter_status == 'PENDING' %}
+        No applications are currently awaiting administrator review.
+      {% else %}
+        No access requests found under this filter.
+      {% endif %}
+    </p>
+  </div>
+{% endif %}
+{% endblock %}

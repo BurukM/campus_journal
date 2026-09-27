@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}{% if query %}Search: "{{ query }}"{% else %}Search Journal &amp; News{% endif %} · Campus Journal{% endblock %}
+
+{% block content %}
+<style>
+  .container {
+    max-width: 1140px !important;
+  }
+  .search-hero {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-radius: 12px;
+    padding: 32px 28px;
+    color: #ffffff;
+    margin-bottom: 28px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  }
+  .search-bar-form {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    flex-wrap: wrap;
+  }
+  .search-input-field {
+    flex-grow: 1;
+    padding: 12px 16px;
+    font-size: 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.95);
+    color: #1b1f24;
+  }
+  .search-submit-btn {
+    background: #1f5eff;
+    color: #ffffff;
+    border: none;
+    padding: 12px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    margin: 0;
+  }
+  .search-filter-pills {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .pill-tab {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    text-decoration: none;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .pill-tab.active {
+    background: #1f5eff;
+    color: #ffffff;
+    border-color: #1f5eff;
+  }
+  .results-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+  }
+  .results-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  }
+</style>
+
+<div class="search-hero">
+  <span class="role-badge" style="background: rgba(31, 94, 255, 0.35); color: #93c5fd; border: 1px solid rgba(147, 197, 253, 0.3);">Global Search</span>
+  <h1 style="color: #ffffff; margin: 10px 0 6px; font-size: 28px;">Search Campus Research &amp; Articles</h1>
+  <p style="color: #94a3b8; margin: 0; font-size: 14px;">Find peer-reviewed papers, engineering design briefs, student breakthroughs, and faculty reports.</p>
+
+  <form method="get" action="{% url 'search' %}" class="search-bar-form">
+    <input type="text" name="q" value="{{ query }}" placeholder="Search by topic, title, author, keyword, or technology..." class="search-input-field" autofocus>
+    <input type="hidden" name="type" value="{{ result_type }}">
+    <button type="submit" class="search-submit-btn">Search</button>
+  </form>
+</div>
+
+<!-- Type filter tabs -->
+{% if query or total_results > 0 %}
+  <div class="search-filter-pills">
+    <a href="{% url 'search' %}?q={{ query }}&type=all" class="pill-tab {% if result_type == 'all' %}active{% endif %}">
+      All Results ({{ total_results }})
+    </a>
+    <a href="{% url 'search' %}?q={{ query }}&type=projects" class="pill-tab {% if result_type == 'projects' %}active{% endif %}">
+      Research Projects ({{ projects|length }})
+    </a>
+    <a href="{% url 'search' %}?q={{ query }}&type=news" class="pill-tab {% if result_type == 'news' %}active{% endif %}">
+      News Articles ({{ news_articles|length }})
+    </a>
+  </div>
+{% endif %}
+
+<!-- Results Presentation -->
+{% if query or selected_dept or selected_cat %}
+  <div style="margin-bottom: 16px;">
+    <p class="muted" style="font-size: 14px;">
+      Found <strong>{{ total_results }}</strong> result{{ total_results|pluralize }} for "{{ query|default:"filtered search" }}"
+    </p>
+  </div>
+
+  <!-- Research Projects Matches -->
+  {% if projects and result_type != 'news' %}
+    <h2 style="font-size: 18px; margin: 24px 0 12px; display: flex; align-items: center; gap: 8px;">
+      <span>Research Projects &amp; Design Briefs</span>
+      <span class="role-badge" style="background:#eaf1ff; color:#1f5eff;">{{ projects|length }}</span>
+    </h2>
+    {% for proj in projects %}
+      <div class="results-card" style="border-left: 4px solid #1f5eff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span class="status-badge status-published" style="font-size: 11px; margin: 0;">Published Paper</span>
+          {% if proj.department %}<span class="muted" style="font-size: 12px;">{{ proj.department.name }}</span>{% endif %}
+        </div>
+        <h3 style="margin: 6px 0; font-size: 18px;">
+          <a href="{% url 'projects:detail' slug=proj.slug %}" style="color: var(--ink); text-decoration: none;">{{ proj.title }}</a>
+        </h3>
+        <p class="muted" style="font-size: 13px; margin: 0 0 8px;">
+          By {{ proj.primary_author.get_full_name|default:proj.primary_author.username }} · Published {{ proj.published_at|date:"F j, Y" }}
+        </p>
+        <p style="font-size: 14px; color: #4b5563; line-height: 1.5; margin: 0 0 12px;">
+          {{ proj.abstract|truncatewords:30 }}
+        </p>
+        <div>
+          <a href="{% url 'projects:detail' slug=proj.slug %}" style="font-size: 13px; font-weight: 600; color: #1f5eff; text-decoration: none;">
+            Read Technical Design Brief →
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- News Articles Matches -->
+  {% if news_articles and result_type != 'projects' %}
+    <h2 style="font-size: 18px; margin: 32px 0 12px; display: flex; align-items: center; gap: 8px;">
+      <span>Campus News &amp; Spotlights</span>
+      <span class="role-badge" style="background:#dafbe1; color:#1a7f37; border-color:#aceebb;">{{ news_articles|length }}</span>
+    </h2>
+    {% for art in news_articles %}
+      <div class="results-card" style="border-left: 4px solid #1a7f37;">
+        {% if art.category %}
+          <div style="margin-bottom: 6px;">
+            <span class="role-badge" style="font-size: 11px; padding: 2px 8px;">{{ art.category.name }}</span>
+          </div>
+        {% endif %}
+        <h3 style="margin: 6px 0; font-size: 18px;">
+          <a href="{% url 'news:detail' slug=art.slug %}" style="color: var(--ink); text-decoration: none;">{{ art.title }}</a>
+        </h3>
+        <p class="muted" style="font-size: 13px; margin: 0 0 8px;">
+          By {{ art.author.get_full_name|default:art.author.username }} · {{ art.published_at|date:"F j, Y" }}
+        </p>
+        <p style="font-size: 14px; color: #4b5563; line-height: 1.5; margin: 0 0 12px;">
+          {{ art.subtitle|default:art.content|truncatewords:28 }}
+        </p>
+        <div>
+          <a href="{% url 'news:detail' slug=art.slug %}" style="font-size: 13px; font-weight: 600; color: #1a7f37; text-decoration: none;">
+            Read Full Story →
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  {% if total_results == 0 %}
+    <div class="card" style="padding: 40px 24px; text-align: center;">
+      <h3>No matches found</h3>
+      <p class="muted">Try checking for spelling errors or searching with broader keywords.</p>
+    </div>
+  {% endif %}
+{% endif %}
+{% endblock %}

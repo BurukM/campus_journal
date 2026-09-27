@@ -1,0 +1,20 @@
+version: "3.9"
+
+# Phase 1 only needs the database. Redis + a worker service get added
+# in later phases once there's an actual conversion/notification job
+# to run in the background.
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: campus_journal
+      POSTGRES_USER: campus_journal
+      POSTGRES_PASSWORD: campus_journal
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

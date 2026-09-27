@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}{% if is_create %}Compose Article{% else %}Edit "{{ form.instance.title }}"{% endif %} · News Desk{% endblock %}
+
+{% block content %}
+<style>
+  .container {
+    max-width: 900px !important;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .markdown-tips-box {
+    background: #f6f8fa;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: #57606a;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+  .markdown-tips-box code {
+    background: #ffffff;
+    padding: 1px 4px;
+    border-radius: 3px;
+    border: 1px solid #d0d7de;
+    font-family: monospace;
+  }
+</style>
+
+<div style="margin-bottom: 16px;">
+  <a href="{% url 'news:desk' %}" class="muted" style="text-decoration: none; font-size: 13px;">
+    ← Back to Editorial Desk
+  </a>
+</div>
+
+<div class="card" style="padding: 32px 28px;">
+  <h1>{% if is_create %}Compose Campus News Article{% else %}Edit Article{% endif %}</h1>
+  <p class="muted" style="margin-top: -6px; margin-bottom: 24px;">
+    Articles support standard Markdown formatting, bold/italics, blockquotes, and headings.
+  </p>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <label for="{{ form.title.id_for_label }}">Headline / Title *</label>
+    {{ form.title }}
+    {{ form.title.errors }}
+
+    <label for="{{ form.subtitle.id_for_label }}">Summary / Subtitle (Lead Paragraph)</label>
+    {{ form.subtitle }}
+    <p class="muted">{{ form.subtitle.help_text }}</p>
+    {{ form.subtitle.errors }}
+
+    <div class="form-grid">
+      <div>
+        <label for="{{ form.category.id_for_label }}">Category</label>
+        {{ form.category }}
+        {{ form.category.errors }}
+      </div>
+      <div>
+        <label for="{{ form.status.id_for_label }}">Publishing Status</label>
+        {{ form.status }}
+        {{ form.status.errors }}
+      </div>
+    </div>
+
+    <div class="form-grid" style="margin-top: 8px;">
+      <div>
+        <label for="{{ form.featured_image.id_for_label }}">Cover Photo / Featured Image</label>
+        {{ form.featured_image }}
+        <p class="muted">{{ form.featured_image.help_text }}</p>
+        {{ form.featured_image.errors }}
+      </div>
+      <div>
+        <label for="{{ form.featured_image_caption.id_for_label }}">Photo Caption / Credit</label>
+        {{ form.featured_image_caption }}
+        <p class="muted">{{ form.featured_image_caption.help_text }}</p>
+        {{ form.featured_image_caption.errors }}
+      </div>
+    </div>
+
+    <div style="margin-top: 8px;">
+      <label for="{{ form.related_submissions.id_for_label }}">Featured Research Paper(s)</label>
+      {{ form.related_submissions }}
+      <p class="muted">{{ form.related_submissions.help_text }}</p>
+      {{ form.related_submissions.errors }}
+    </div>
+
+    <div style="margin-top: 14px;">
+      <label for="{{ form.content.id_for_label }}">Article Body (Markdown &amp; HTML) *</label>
+      {{ form.content }}
+      {{ form.content.errors }}
+      <div class="markdown-tips-box">
+        <strong>Formatting Tips:</strong>
+        Use <code>## Heading 2</code> or <code>### Heading 3</code> for sections ·
+        <code>**bold**</code> and <code>*italic*</code> ·
+        <code>> Blockquote or interview snippet</code> ·
+        <code>- Bullet point</code> ·
+        <code>[Link Title](https://example.com)</code> ·
+        Blank lines separate paragraphs.
+      </div>
+    </div>
+
+    <div style="margin-top: 24px; display: flex; gap: 12px; align-items: center;">
+      <button type="submit">Save &amp; Continue</button>
+      <a href="{% url 'news:desk' %}" class="btn" style="background:#f6f8fa; color:var(--ink); border:1px solid var(--line); margin-top:14px;">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}New submission{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>New submission</h1>
+  <div style="background: #e7f5ff; border: 1px solid #74c0fc; border-left: 4px solid #1c7ed6; padding: 12px 16px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; color: #1864ab;">
+    <strong>Next Step Notice:</strong> After creating this draft, you will be prompted to upload your files package (.zip or .pdf). Please make sure your upload package contains a PDF named <strong>Technical Design Brief.pdf</strong> (or <strong>Design Brief.pdf</strong>) to be automatically compiled into responsive HTML.
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    <label for="{{ form.title.id_for_label }}">Title</label>
+    {{ form.title }}
+    {{ form.title.errors }}
+
+    <label for="{{ form.abstract.id_for_label }}">Abstract</label>
+    {{ form.abstract }}
+    {{ form.abstract.errors }}
+
+    <label for="{{ form.keywords.id_for_label }}">Keywords</label>
+    {{ form.keywords }}
+
+    <div class="grid">
+      <div>
+        <label for="{{ form.department.id_for_label }}">Department</label>
+        {{ form.department }}
+      </div>
+      <div>
+        <label for="{{ form.supervisor_name.id_for_label }}">Supervisor</label>
+        {{ form.supervisor_name }}
+      </div>
+    </div>
+
+    <label for="{{ form.co_authors_usernames.id_for_label }}">{{ form.co_authors_usernames.label }}</label>
+    {{ form.co_authors_usernames }}
+    <p class="muted">{{ form.co_authors_usernames.help_text }}</p>
+
+    <button type="submit">Create draft</button>
+  </form>
+</div>
+{% endblock %}

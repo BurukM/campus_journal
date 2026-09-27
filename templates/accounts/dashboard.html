@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Welcome, {{ user.first_name|default:user.username }}</h1>
+  <div>
+    {% for role in roles %}<span class="role-badge">{{ role }}</span>{% endfor %}
+    {% if not roles %}<span class="muted">No roles assigned yet.</span>{% endif %}
+  </div>
+  <a href="{% url 'accounts:profile_edit' %}" class="btn">Edit profile</a>
+</div>
+
+{% if is_student %}
+<div class="card">
+  <h2>My Projects</h2>
+  {% for s in my_submissions %}
+    <p><a href="{% url 'submissions:detail' pk=s.pk %}">{{ s.title }}</a>
+      <span class="status-badge status-{{ s.status|lower }}">{{ s.get_status_display }}</span>
+    </p>
+  {% empty %}
+    <p class="muted">No submissions yet.</p>
+  {% endfor %}
+  <a href="{% url 'submissions:list' %}" class="btn">View all / new submission</a>
+</div>
+{% endif %}
+
+{% if is_reviewer %}
+<div class="card">
+  <h2>Reviewer Queue</h2>
+  {% for rev in my_reviews %}
+    <p><a href="{% url 'submissions:detail' pk=rev.submission.pk %}">{{ rev.submission.title }}</a>
+      <span class="status-badge status-{{ rev.submission.status|lower }}">{{ rev.submission.get_status_display }}</span>
+    </p>
+  {% empty %}
+    <p class="muted">Nothing assigned to you yet.</p>
+  {% endfor %}
+  <a href="{% url 'submissions:reviewer_queue' %}" class="btn">View all</a>
+</div>
+{% endif %}
+
+{% if is_journal_manager %}
+<div class="card">
+  <h2>Journal Manager</h2>
+  <p class="muted">{{ queue_count }} submission(s) awaiting attention.</p>
+  <a href="{% url 'submissions:manager_queue' %}" class="btn">Open queue</a>
+</div>
+{% endif %}
+
+{% if is_news_editor %}
+<div class="card">
+  <h2>News Desk</h2>
+  <p class="muted">
+    <strong>{{ news_drafts_count }}</strong> pending draft{{ news_drafts_count|pluralize }} · <strong>{{ news_published_count }}</strong> published article{{ news_published_count|pluralize }}.
+  </p>
+  <div style="display: flex; gap: 8px;">
+    <a href="{% url 'news:desk' %}" class="btn">Open News Desk</a>
+    <a href="{% url 'news:create' %}" class="btn" style="background:#ffffff; color:var(--ink); border:1px solid var(--line);">+ Write Article</a>
+  </div>
+</div>
+{% endif %}
+
+{% if is_journal_manager or is_administrator %}
+<div class="card">
+  <h2>User Access Requests</h2>
+  <p class="muted">
+    Review and approve self-service registration applications for Reviewer, Staff, and Administrator roles.
+  </p>
+  {% if pending_access_requests_count %}
+    <div style="margin-bottom: 12px;">
+      <span class="role-badge" style="background:#fef3c7; color:#b45309; border-color:#fde68a;">
+        {{ pending_access_requests_count }} request{{ pending_access_requests_count|pluralize }} awaiting review
+      </span>
+    </div>
+  {% else %}
+    <p class="muted" style="font-size: 13px;">No requests currently pending.</p>
+  {% endif %}
+  <a href="{% url 'accounts:access_requests' %}" class="btn">Open Access Requests</a>
+</div>
+{% endif %}
+
+{% if is_administrator %}
+<div class="card">
+  <h2>Administration</h2>
+  <p class="muted">Manage users, roles, and departments in the <a href="/admin/">Django admin</a>.</p>
+</div>
+{% endif %}
+{% endblock %}

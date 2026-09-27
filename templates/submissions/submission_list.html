@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}My Projects{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>My Projects</h1>
+  <a href="{% url 'submissions:create' %}" class="btn">+ New submission</a>
+</div>
+
+{% for s in submissions %}
+<div class="card">
+  <h2><a href="{% url 'submissions:detail' pk=s.pk %}">{{ s.title }}</a></h2>
+  <span class="status-badge status-{{ s.status|lower }}">{{ s.get_status_display }}</span>
+  <p class="muted">Updated {{ s.updated_at|date:"M j, Y" }} · v{{ s.current_version_number }}</p>
+</div>
+{% empty %}
+<div class="card"><p class="muted">No submissions yet. Create your first one above.</p></div>
+{% endfor %}
+{% endblock %}

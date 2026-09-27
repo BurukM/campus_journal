@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Notifications · Campus Journal{% endblock %}
+
+{% block content %}
+<style>
+  .notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .notification-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--line);
+    transition: background 0.15s ease;
+  }
+  .notification-item:last-child {
+    border-bottom: none;
+  }
+  .notification-item.unread {
+    background: #f0f7ff;
+    border-left: 4px solid var(--accent);
+  }
+  .notif-title {
+    font-size: 14px;
+    margin: 0 0 4px;
+    color: var(--ink);
+  }
+  .notif-meta {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 0;
+  }
+</style>
+
+<div class="notifications-header">
+  <div>
+    <h1 style="margin: 0 0 6px;">Notifications</h1>
+    <p class="muted" style="margin: 0;">Stay informed about your submissions, review assignments, and publications.</p>
+  </div>
+  {% if unread_total > 0 %}
+    <form method="post" action="{% url 'notifications:mark_all_read' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn" style="background: #ffffff; color: var(--ink); border: 1px solid var(--line); margin-top: 0; font-size: 13px;">
+        ✓ Mark all as read
+      </button>
+    </form>
+  {% endif %}
+</div>
+
+<div class="card" style="padding: 0; overflow: hidden;">
+  <div style="padding: 12px 18px; background: #fafbfc; border-bottom: 1px solid var(--line); display: flex; gap: 12px; font-size: 13px;">
+    <a href="{% url 'notifications:list' %}" style="font-weight: {% if not filter_type %}700; color: var(--accent){% else %}normal; color: var(--muted){% endif %}; text-decoration: none;">
+      All
+    </a>
+    <a href="{% url 'notifications:list' %}?filter=unread" style="font-weight: {% if filter_type == 'unread' %}700; color: var(--accent){% else %}normal; color: var(--muted){% endif %}; text-decoration: none;">
+      Unread ({{ unread_total }})
+    </a>
+  </div>
+
+  {% if notifications %}
+    {% for n in notifications %}
+      <div class="notification-item {% if not n.is_read %}unread{% endif %}">
+        <div style="flex-grow: 1; margin-right: 16px;">
+          <p class="notif-title">
+            {% if n.actor %}<strong>{{ n.actor.get_full_name|default:n.actor.username }}</strong>{% endif %}
+            {{ n.verb }}
+            <a href="{% url 'notifications:mark_read' pk=n.pk %}" style="color: var(--accent); font-weight: 600; text-decoration: none;">
+              "{{ n.target_title }}"
+            </a>
+          </p>
+          <p class="notif-meta">
+            {{ n.created_at|timesince }} ago
+          </p>
+        </div>
+        <div>
+          {% if not n.is_read %}
+            <a href="{% url 'notifications:mark_read' pk=n.pk %}" class="btn" style="margin-top: 0; padding: 5px 12px; font-size: 12px;">
+              View
+            </a>
+          {% else %}
+            <a href="{% url 'notifications:mark_read' pk=n.pk %}" class="btn" style="margin-top: 0; padding: 5px 12px; font-size: 12px; background: #ffffff; color: var(--muted); border: 1px solid var(--line);">
+              View
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div style="padding: 36px 24px; text-align: center;">
+      <p class="muted" style="margin: 0;">No notifications right now.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

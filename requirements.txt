@@ -1,0 +1,7 @@
+Django>=5.1,<5.2
+psycopg2-binary>=2.9
+python-decouple>=3.8
+dj-database-url>=2.2
+Pillow>=10.4
+pymupdf>=1.25.0
+markdown>=3.6

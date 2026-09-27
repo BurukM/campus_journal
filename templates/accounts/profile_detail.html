@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ member.get_full_name|default:member.username }}{% endblock %}
+{% block content %}
+<div class="card">
+  {% if profile.photo %}
+    <img src="{{ profile.photo.url }}" alt="" style="width:96px;height:96px;border-radius:50%;object-fit:cover;">
+  {% endif %}
+  <h1>{{ member.get_full_name|default:member.username }}</h1>
+  <p class="muted">{{ profile.title }}{% if profile.department %} · {{ profile.department }}{% endif %}{% if profile.class_year %} · Class of {{ profile.class_year }}{% endif %}</p>
+  <div>
+    {% for role in member.role_slugs %}<span class="role-badge">{{ role }}</span>{% endfor %}
+  </div>
+
+  {% if profile.bio %}
+    <h2 style="margin-top:20px;">Bio</h2>
+    <p>{{ profile.bio }}</p>
+  {% endif %}
+
+  {% if profile.research_interests %}
+    <h2>Research interests</h2>
+    <p>{{ profile.research_interests }}</p>
+  {% endif %}
+
+  {% if member == user %}
+    <a href="{% url 'accounts:profile_edit' %}" class="btn">Edit my profile</a>
+  {% endif %}
+</div>
+{% endblock %}

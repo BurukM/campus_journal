@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}News Desk · Campus Journal{% endblock %}
+
+{% block content %}
+<style>
+  .container {
+    max-width: 1060px !important;
+  }
+  .desk-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 20px;
+    text-align: center;
+  }
+  .stat-num {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .desk-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    font-size: 14px;
+  }
+  .desk-table th, .desk-table td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+  }
+  .desk-table th {
+    background: #fafbfc;
+    font-weight: 600;
+    color: #57606a;
+    font-size: 12px;
+    text-transform: uppercase;
+  }
+</style>
+
+<div class="desk-header">
+  <div>
+    <h1 style="margin: 0 0 6px;">Editorial News Desk</h1>
+    <p class="muted" style="margin: 0;">Manage, compose, review, and publish campus technology articles.</p>
+  </div>
+  <div>
+    <a href="{% url 'news:create' %}" class="btn">+ Compose Article</a>
+  </div>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-num">{{ total_count }}</div>
+    <div class="stat-label">Total Articles</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color: #1a7f37;">{{ published.count }}</div>
+    <div class="stat-label">Published Live</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color: #9a6700;">{{ in_review.count }}</div>
+    <div class="stat-label">In Review</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" style="color: #57606a;">{{ drafts.count }}</div>
+    <div class="stat-label">Drafts</div>
+  </div>
+</div>
+
+<!-- Published Stories -->
+<div class="card">
+  <h2>Live Published Articles ({{ published.count }})</h2>
+  {% if published %}
+    <table class="desk-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Category</th>
+          <th>Author</th>
+          <th>Published Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for art in published %}
+          <tr>
+            <td>
+              <strong><a href="{% url 'news:detail' slug=art.slug %}" style="color: var(--ink); text-decoration: none;">{{ art.title }}</a></strong>
+            </td>
+            <td>{{ art.category.name|default:"—" }}</td>
+            <td>{{ art.author.get_full_name|default:art.author.username }}</td>
+            <td>{{ art.published_at|date:"M j, Y" }}</td>
+            <td>
+              <a href="{% url 'news:edit' slug=art.slug %}" style="margin-right: 8px;">Edit</a>
+              <form method="post" action="{% url 'news:toggle_publish' slug=art.slug %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" style="background:none; border:none; color:#c0392b; cursor:pointer; padding:0; font-size:13px;">Unpublish</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No articles currently published live.</p>
+  {% endif %}
+</div>
+
+<!-- Drafts & In Review -->
+<div class="card">
+  <h2>Drafts &amp; Editorial Review ({{ drafts.count|add:in_review.count }})</h2>
+  {% if drafts or in_review %}
+    <table class="desk-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Status</th>
+          <th>Category</th>
+          <th>Author</th>
+          <th>Updated</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for art in in_review %}
+          <tr>
+            <td><strong><a href="{% url 'news:detail' slug=art.slug %}" style="color: var(--ink);">{{ art.title }}</a></strong></td>
+            <td><span class="role-badge" style="background:#fff8c5; color:#9a6700; border-color:#d4a72c;">In Review</span></td>
+            <td>{{ art.category.name|default:"—" }}</td>
+            <td>{{ art.author.get_full_name|default:art.author.username }}</td>
+            <td>{{ art.updated_at|date:"M j, Y" }}</td>
+            <td>
+              <a href="{% url 'news:edit' slug=art.slug %}" style="margin-right: 8px;">Edit</a>
+              <form method="post" action="{% url 'news:toggle_publish' slug=art.slug %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" style="background:none; border:none; color:#1a7f37; font-weight:600; cursor:pointer; padding:0; font-size:13px;">Publish Now</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        {% for art in drafts %}
+          <tr>
+            <td><strong><a href="{% url 'news:detail' slug=art.slug %}" style="color: var(--ink);">{{ art.title }}</a></strong></td>
+            <td><span class="role-badge" style="background:#f0f2f5; color:#57606a;">Draft</span></td>
+            <td>{{ art.category.name|default:"—" }}</td>
+            <td>{{ art.author.get_full_name|default:art.author.username }}</td>
+            <td>{{ art.updated_at|date:"M j, Y" }}</td>
+            <td>
+              <a href="{% url 'news:edit' slug=art.slug %}" style="margin-right: 8px;">Edit</a>
+              <form method="post" action="{% url 'news:toggle_publish' slug=art.slug %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" style="background:none; border:none; color:#1a7f37; font-weight:600; cursor:pointer; padding:0; font-size:13px;">Publish Now</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No drafts or pending articles.</p>
+  {% endif %}
+</div>
+{% endblock %}

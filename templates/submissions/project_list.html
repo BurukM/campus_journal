@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% block title %}Published Research Projects &amp; Design Briefs · Campus Journal{% endblock %}
+
+{% block content %}
+<style>
+  .container {
+    max-width: 1140px !important;
+  }
+
+  .projects-hero-banner {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-radius: 14px;
+    padding: 36px 32px;
+    color: #ffffff;
+    margin-bottom: 28px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .projects-hero-banner::after {
+    content: "";
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    width: 220px;
+    height: 220px;
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.25) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .projects-quick-search-form {
+    display: flex;
+    gap: 10px;
+    max-width: 580px;
+    margin-top: 20px;
+  }
+
+  .projects-quick-search-input {
+    flex-grow: 1;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    padding: 11px 16px;
+    font-size: 14px;
+    color: #0f172a;
+  }
+
+  .projects-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 28px;
+    align-items: center;
+  }
+
+  .dept-filter-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    background: #ffffff;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    transition: all 0.15s ease;
+  }
+
+  .dept-filter-pill:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .dept-filter-pill.active {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* Projects Grid */
+  .projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+  }
+
+  .project-catalog-card {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px 22px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease;
+    position: relative;
+  }
+
+  .project-catalog-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px -4px rgba(37, 99, 235, 0.1), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
+    border-color: #cbd5e1;
+  }
+
+  .card-top-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 12px;
+  }
+
+  .project-title {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.35;
+    margin: 0 0 10px;
+  }
+
+  .project-title a {
+    color: var(--ink);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .project-title a:hover {
+    color: var(--accent);
+  }
+
+  .author-byline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--ink-secondary);
+  }
+
+  .author-avatar-initial {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .project-abstract {
+    font-size: 13px;
+    color: #475569;
+    line-height: 1.55;
+    margin: 0 0 16px;
+    flex-grow: 1;
+  }
+
+  .keywords-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 16px;
+  }
+
+  .keyword-chip {
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .card-action-bar {
+    border-top: 1px solid #f1f5f9;
+    padding-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+  }
+
+  .read-brief-link {
+    font-weight: 600;
+    color: var(--accent);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: gap 0.15s ease;
+  }
+
+  .read-brief-link:hover {
+    gap: 8px;
+  }
+</style>
+
+<!-- Hero Header Section -->
+<div class="projects-hero-banner">
+  <span class="role-badge" style="background: rgba(37, 99, 235, 0.35); color: #93c5fd; border: 1px solid rgba(147, 197, 253, 0.3); margin-bottom: 10px;">
+    Open Access Research Directory
+  </span>
+  <h1 style="color: #ffffff; font-size: 32px; margin: 8px 0 10px;">
+    Published Research &amp; Technical Design Briefs
+  </h1>
+  <p style="color: #94a3b8; font-size: 15px; max-width: 720px; margin: 0; line-height: 1.6;">
+    Explore peer-reviewed student research papers, engineering designs, and computational breakthroughs across departments.
+  </p>
+
+  <form method="get" action="{% url 'search' %}" class="projects-quick-search-form">
+    <input type="hidden" name="type" value="projects">
+    <input type="text" name="q" placeholder="Search research by title, keyword, method, or author..." class="projects-quick-search-input">
+    <button type="submit" class="btn" style="margin-top: 0; padding: 10px 20px;">Search</button>
+  </form>
+</div>
+
+<!-- Department Filters -->
+<div class="projects-filter-bar">
+  <span style="font-size: 13px; font-weight: 600; color: var(--muted); margin-right: 6px;">Filter Discipline:</span>
+  <a href="{% url 'projects:list' %}" class="dept-filter-pill {% if not selected_dept %}active{% endif %}">
+    All Disciplines
+  </a>
+  {% for dept in departments %}
+    <a href="{% url 'projects:list' %}?dept={{ dept.pk }}" class="dept-filter-pill {% if selected_dept == dept.pk|stringformat:'s' %}active{% endif %}">
+      {{ dept.short_name|default:dept.name }}
+    </a>
+  {% endfor %}
+</div>
+
+<!-- Projects Grid -->
+{% if submissions %}
+  <div class="projects-grid">
+    {% for s in submissions %}
+      <div class="project-catalog-card">
+        <div class="card-top-meta">
+          {% if s.department %}
+            <span class="role-badge" style="margin: 0; font-size: 11px;">
+              {{ s.department.short_name|default:s.department.name }}
+            </span>
+          {% else %}
+            <span class="role-badge" style="margin: 0; font-size: 11px; background: #f1f5f9; color: #475569; border-color: #cbd5e1;">
+              General Research
+            </span>
+          {% endif %}
+          <span class="muted">{{ s.published_at|date:"M j, Y" }}</span>
+        </div>
+
+        <h2 class="project-title">
+          <a href="{% url 'projects:detail' slug=s.slug %}">{{ s.title }}</a>
+        </h2>
+
+        <div class="author-byline">
+          <span class="author-avatar-initial">
+            {{ s.primary_author.first_name|default:s.primary_author.username|slice:":1"|upper }}
+          </span>
+          <span>
+            <strong>{{ s.primary_author.get_full_name|default:s.primary_author.username }}</strong>
+            {% if s.authors.all %}<span class="muted">+{{ s.authors.count }} co-author{{ s.authors.count|pluralize }}</span>{% endif %}
+          </span>
+        </div>
+
+        <p class="project-abstract">
+          {{ s.abstract|truncatewords:32 }}
+        </p>
+
+        {% if s.keyword_list %}
+          <div class="keywords-row">
+            {% for kw in s.keyword_list|slice:":4" %}
+              <span class="keyword-chip">{{ kw }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="card-action-bar">
+          <span class="status-badge status-published" style="margin: 0; font-size: 11px; padding: 2px 8px;">
+            Peer Reviewed
+          </span>
+          <a href="{% url 'projects:detail' slug=s.slug %}" class="read-brief-link">
+            <span>Read Design Brief</span>
+            <span>&rarr;</span>
+          </a>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card" style="text-align: center; padding: 48px 20px;">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: #94a3b8; margin-bottom: 12px;">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+      <line x1="16" y1="13" x2="8" y2="13"></line>
+      <line x1="16" y1="17" x2="8" y2="17"></line>
+      <polyline points="10 9 9 9 8 9"></polyline>
+    </svg>
+    <h3 style="margin: 0 0 6px;">No published projects found</h3>
+    <p class="muted" style="margin: 0 0 16px;">
+      {% if selected_dept %}
+        No research papers published in this department yet. Try choosing another discipline or viewing all.
+      {% else %}
+        Peer-reviewed research and technical briefs will appear here once published.
+      {% endif %}
+    </p>
+    {% if selected_dept %}
+      <a href="{% url 'projects:list' %}" class="btn btn-secondary">View All Disciplines</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

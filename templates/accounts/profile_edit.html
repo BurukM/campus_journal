@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Edit profile{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Edit your profile</h1>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <h2>Basic info</h2>
+    <div class="grid">
+      <div>
+        <label for="{{ basic_form.first_name.id_for_label }}">First name</label>
+        {{ basic_form.first_name }}
+      </div>
+      <div>
+        <label for="{{ basic_form.last_name.id_for_label }}">Last name</label>
+        {{ basic_form.last_name }}
+      </div>
+    </div>
+
+    <h2 style="margin-top:20px;">Academic profile</h2>
+    <label for="{{ profile_form.title.id_for_label }}">Title</label>
+    {{ profile_form.title }}
+    <div class="grid">
+      <div>
+        <label for="{{ profile_form.department.id_for_label }}">Department</label>
+        {{ profile_form.department }}
+      </div>
+      <div>
+        <label for="{{ profile_form.class_year.id_for_label }}">Class year</label>
+        {{ profile_form.class_year }}
+      </div>
+    </div>
+    <label for="{{ profile_form.bio.id_for_label }}">Bio</label>
+    {{ profile_form.bio }}
+    <label for="{{ profile_form.research_interests.id_for_label }}">Research interests</label>
+    {{ profile_form.research_interests }}
+    <label for="{{ profile_form.photo.id_for_label }}">Photo</label>
+    {{ profile_form.photo }}
+    <label for="{{ profile_form.phone.id_for_label }}">Phone</label>
+    {{ profile_form.phone }}
+    <label>
+      {{ profile_form.is_public }} Visible on the public People page
+    </label>
+    <button type="submit">Save profile</button>
+  </form>
+</div>
+{% endblock %}
