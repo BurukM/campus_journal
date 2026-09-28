@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "campus_journal/wsgi.py": {
+      "maxDuration": 60
+    }
+  }
+}
