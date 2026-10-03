@@ -21,6 +21,11 @@ def create_profile_for_new_user(sender, instance, created, **kwargs):
     Profile.objects.get_or_create(user=instance)
 
     if not instance.is_superuser and instance.is_active:
-        student_role = Role.objects.filter(slug=Role.STUDENT).first()
-        if student_role:
-            UserRole.objects.get_or_create(user=instance, role=student_role)
+        student_role, _ = Role.objects.get_or_create(
+            slug=Role.STUDENT,
+            defaults={
+                'name': 'Student / Author',
+                'description': 'Submits projects, tracks their own submissions, responds to reviewer feedback.',
+            }
+        )
+        UserRole.objects.get_or_create(user=instance, role=student_role)

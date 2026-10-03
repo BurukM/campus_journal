@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth import authenticate
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
+from campus_journal.constants import DepartmentChoiceField
 from .models import AccessRequest, Department, Profile, Role, User
 
 
@@ -22,10 +23,7 @@ class SignUpForm(UserCreationForm):
         widget=forms.RadioSelect(attrs={'class': 'role-radio-select'}),
         help_text="Choose the role that matches your engagement with the journal.",
     )
-    department = forms.ModelChoiceField(
-        queryset=Department.objects.all(),
-        required=False,
-        empty_label='-- Select Academic Department (Optional) --',
+    department = DepartmentChoiceField(
         help_text="Your associated university department.",
     )
     affiliation_note = forms.CharField(
@@ -47,6 +45,13 @@ class SignUpForm(UserCreationForm):
         if User.objects.filter(email=email).exists():
             raise forms.ValidationError('An account with this email already exists.')
         return email
+
+    def clean_department(self):
+        dept_val = self.cleaned_data.get('department')
+        if not dept_val:
+            raise forms.ValidationError('Select your department.')
+        dept, _ = Department.objects.get_or_create(name=dept_val)
+        return dept
 
     def clean(self):
         cleaned_data = super().clean()
@@ -111,6 +116,11 @@ class CustomAuthenticationForm(AuthenticationForm):
 
 
 class ProfileForm(forms.ModelForm):
+    department = DepartmentChoiceField(
+        required=False,
+        empty_label='-- Select Academic Department --',
+    )
+
     class Meta:
         model = Profile
         fields = (
@@ -128,6 +138,25 @@ class ProfileForm(forms.ModelForm):
             'research_interests': forms.Textarea(attrs={'rows': 3}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.department:
+            current_name = self.instance.department.name
+            current_choices = [c[0] for c in self.fields['department'].choices]
+            if current_name not in current_choices:
+                self.fields['department'].choices = (
+                    list(self.fields['department'].choices) + [(current_name, current_name)]
+                )
+            if not self.is_bound:
+                self.initial['department'] = current_name
+
+    def clean_department(self):
+        dept_val = self.cleaned_data.get('department')
+        if not dept_val:
+            return None
+        dept, _ = Department.objects.get_or_create(name=dept_val)
+        return dept
+
 
 class BasicInfoForm(forms.ModelForm):
     """First name / last name live on User, not Profile."""
@@ -135,3 +164,4 @@ class BasicInfoForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ('first_name', 'last_name')
+

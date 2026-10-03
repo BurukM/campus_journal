@@ -1,7 +1,11 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, LogoutView
+from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -10,6 +14,18 @@ from accounts.permissions import role_required
 from notifications.models import Notification
 from .forms import BasicInfoForm, CustomAuthenticationForm, ProfileForm, SignUpForm
 from .models import AccessRequest, Profile, Role, User, UserRole
+
+logger = logging.getLogger(__name__)
+
+STANDARD_ROLE_NAMES = {
+    Role.STUDENT: 'Student / Author',
+    Role.REVIEWER: 'Staff Reviewer',
+    Role.JOURNAL_MANAGER: 'Journal Manager',
+    Role.NEWS_EDITOR: 'News Editor',
+    Role.ADMINISTRATOR: 'Administrator',
+    Role.CLUB_ADVISOR: 'Club Advisor',
+    Role.SUPER_ADMIN: 'Super Admin',
+}
 
 
 class AccountLoginView(LoginView):
@@ -54,7 +70,16 @@ def signup(request):
                     user.profile.title = note[:100]
                 user.profile.save()
 
-                target_role = Role.objects.get(slug=role_slug)
+                target_role, _ = Role.objects.get_or_create(
+                    slug=role_slug,
+                    defaults={
+                        'name': STANDARD_ROLE_NAMES.get(
+                            role_slug,
+                            dict(SignUpForm.ROLE_CHOICES).get(role_slug, role_slug.replace('_', ' ').title())
+                        ),
+                        'description': f'Standard system role for {role_slug}.',
+                    },
+                )
                 AccessRequest.objects.create(
                     user=user,
                     requested_role=target_role,
@@ -62,18 +87,22 @@ def signup(request):
                     affiliation_note=note,
                 )
 
-                # Send in-app notification to all active journal administrators & managers
-                admin_users = User.objects.filter(
-                    roles__slug__in=[Role.ADMINISTRATOR, Role.JOURNAL_MANAGER]
-                ).distinct()
-                for admin in admin_users:
-                    Notification.notify(
-                        recipient=admin,
-                        actor=user,
-                        verb=f"requested {target_role.name} access",
-                        target_title=f"{user.get_full_name() or user.username} ({user.email})",
-                        link=reverse('accounts:access_requests'),
-                    )
+                # Send in-app notification to all active journal administrators & managers (and superusers)
+                try:
+                    with transaction.atomic():
+                        admin_users = User.objects.filter(
+                            Q(is_superuser=True) | Q(roles__slug__in=[Role.ADMINISTRATOR, Role.JOURNAL_MANAGER])
+                        ).distinct()
+                        for admin in admin_users:
+                            Notification.notify(
+                                recipient=admin,
+                                actor=user,
+                                verb=f"requested {target_role.name} access",
+                                target_title=f"{user.get_full_name() or user.username} ({user.email})",
+                                link=reverse('accounts:access_requests'),
+                            )
+                except Exception as exc:
+                    logger.warning("Could not dispatch access request notification for user %s: %s", user.username, exc)
 
                 return render(
                     request,

@@ -192,3 +192,152 @@ class RoleAccessApprovalWorkflowTests(TestCase):
         })
         self.assertEqual(login_resp.status_code, 200)
         self.assertContains(login_resp, 'declined')
+
+    def test_signup_requires_approval_when_roles_unseeded(self):
+        """Regression test: signup for approval-required role must not 500 when Role table is unseeded."""
+        # Wipe all roles and related mappings to simulate fresh empty DB
+        UserRole.objects.all().delete()
+        AccessRequest.objects.all().delete()
+        Role.objects.all().delete()
+
+        client = Client()
+        signup_data = {
+            'first_name': 'New',
+            'last_name': 'Reviewer',
+            'username': 'newreviewer',
+            'email': 'newrev@campus.edu',
+            'role': Role.REVIEWER,
+            'department': 'Biomedical Engineering',
+            'affiliation_note': 'Visiting Professor in CS',
+            'password1': 'Pass123!Secure',
+            'password2': 'Pass123!Secure',
+        }
+        resp = client.post(reverse('accounts:signup'), signup_data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Pending Administrator Approval')
+
+        # Inactive user was created
+        user = User.objects.get(username='newreviewer')
+        self.assertFalse(user.is_active)
+
+        # AccessRequest was created
+        req = AccessRequest.objects.get(user=user)
+        self.assertEqual(req.status, AccessRequest.STATUS_PENDING)
+        self.assertEqual(req.requested_role.slug, Role.REVIEWER)
+
+    def test_superuser_without_role_receives_access_request_notification(self):
+        """Superusers created via createsuperuser (who lack explicit UserRole rows) are notified."""
+        superuser = User.objects.create_superuser(
+            username='pure_super',
+            email='super@campus.edu',
+            password='Password123!',
+        )
+        # Ensure pure_super has NO UserRole rows
+        self.assertFalse(UserRole.objects.filter(user=superuser).exists())
+
+        client = Client()
+        signup_data = {
+            'first_name': 'Jane',
+            'last_name': 'Manager',
+            'username': 'janemanager',
+            'email': 'jane@campus.edu',
+            'role': Role.JOURNAL_MANAGER,
+            'department': 'Biomedical Engineering',
+            'affiliation_note': 'Managing Editor applicant',
+            'password1': 'Pass123!Secure',
+            'password2': 'Pass123!Secure',
+        }
+        resp = client.post(reverse('accounts:signup'), signup_data)
+        self.assertEqual(resp.status_code, 200)
+
+        super_notifs = Notification.objects.filter(recipient=superuser)
+        self.assertTrue(super_notifs.exists())
+        self.assertIn('requested Journal Manager access', super_notifs.first().verb)
+
+    def test_notification_failure_does_not_break_signup(self):
+        """Notification exceptions must not turn a successful signup into an HTTP 500."""
+        from unittest.mock import patch
+        client = Client()
+        signup_data = {
+            'first_name': 'Sam',
+            'last_name': 'Reviewer',
+            'username': 'samreviewer',
+            'email': 'sam@campus.edu',
+            'role': Role.REVIEWER,
+            'department': 'Biomedical Engineering',
+            'affiliation_note': 'Researcher',
+            'password1': 'Pass123!Secure',
+            'password2': 'Pass123!Secure',
+        }
+        with patch('notifications.models.Notification.notify', side_effect=RuntimeError('Notification service down')):
+            resp = client.post(reverse('accounts:signup'), signup_data)
+            self.assertEqual(resp.status_code, 200)
+            self.assertContains(resp, 'Pending Administrator Approval')
+            user = User.objects.get(username='samreviewer')
+            self.assertFalse(user.is_active)
+
+    def test_signup_accepts_each_of_six_departments(self):
+        """Signup accepts each of the six canonical departments."""
+        from campus_journal.constants import DEPARTMENTS
+        self.assertEqual(len(DEPARTMENTS), 6)
+        client = Client()
+        for idx, dept_name in enumerate(DEPARTMENTS):
+            username = f'student_dept_{idx}'
+            email = f'student_dept_{idx}@campus.edu'
+            signup_data = {
+                'first_name': f'Student{idx}',
+                'last_name': 'Test',
+                'username': username,
+                'email': email,
+                'role': Role.STUDENT,
+                'department': dept_name,
+                'affiliation_note': '',
+                'password1': 'Pass123!Secure',
+                'password2': 'Pass123!Secure',
+            }
+            resp = client.post(reverse('accounts:signup'), signup_data)
+            self.assertRedirects(resp, reverse('accounts:dashboard'))
+            u = User.objects.get(username=username)
+            self.assertIsNotNone(u.profile.department)
+            self.assertEqual(u.profile.department.name, dept_name)
+            # Log out before next loop iteration
+            client.logout()
+
+    def test_signup_rejects_missing_department(self):
+        """Signup rejects when department is omitted or empty."""
+        client = Client()
+        signup_data = {
+            'first_name': 'No',
+            'last_name': 'Dept',
+            'username': 'nodept',
+            'email': 'nodept@campus.edu',
+            'role': Role.STUDENT,
+            'department': '',
+            'affiliation_note': '',
+            'password1': 'Pass123!Secure',
+            'password2': 'Pass123!Secure',
+        }
+        resp = client.post(reverse('accounts:signup'), signup_data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertFormError(resp.context['form'], 'department', 'Select your department.')
+        self.assertFalse(User.objects.filter(username='nodept').exists())
+
+    def test_signup_rejects_invalid_department(self):
+        """Signup rejects any department value not in the canonical list."""
+        client = Client()
+        signup_data = {
+            'first_name': 'Bad',
+            'last_name': 'Dept',
+            'username': 'baddept',
+            'email': 'baddept@campus.edu',
+            'role': Role.STUDENT,
+            'department': 'Astrophysics & Astronomy',
+            'affiliation_note': '',
+            'password1': 'Pass123!Secure',
+            'password2': 'Pass123!Secure',
+        }
+        resp = client.post(reverse('accounts:signup'), signup_data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.context['form'].errors.get('department'))
+        self.assertFalse(User.objects.filter(username='baddept').exists())
+

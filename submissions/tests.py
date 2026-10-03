@@ -641,3 +641,71 @@ class DirectUploadLifecycleTests(TestCase):
         self.assertContains(resp, 'Direct file uploads via the browser are required')
         # Ensure no version was created
         self.assertEqual(self.submission.versions.count(), 0)
+
+
+class SubmissionDepartmentFieldTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='author_dept', email='author_dept@example.com', password='password123'
+        )
+        self.client = Client()
+        self.client.login(username='author_dept', password='password123')
+
+    def test_submission_create_accepts_each_of_six_departments(self):
+        from campus_journal.constants import DEPARTMENTS
+        self.assertEqual(len(DEPARTMENTS), 6)
+        for idx, dept_name in enumerate(DEPARTMENTS):
+            post_data = {
+                'title': f'Research Paper {idx}',
+                'abstract': f'Abstract for paper {idx}',
+                'keywords': 'test, paper',
+                'department': dept_name,
+                'supervisor_name': 'Prof. Advisor',
+            }
+            resp = self.client.post(reverse('submissions:create'), post_data)
+            self.assertEqual(resp.status_code, 302)
+            sub = Submission.objects.get(title=f'Research Paper {idx}')
+            self.assertIsNotNone(sub.department)
+            self.assertEqual(sub.department.name, dept_name)
+
+    def test_submission_create_rejects_missing_department(self):
+        post_data = {
+            'title': 'Paper Without Dept',
+            'abstract': 'Abstract here',
+            'keywords': 'test',
+            'department': '',
+            'supervisor_name': '',
+        }
+        resp = self.client.post(reverse('submissions:create'), post_data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertFormError(resp.context['form'], 'department', 'Select your department.')
+        self.assertFalse(Submission.objects.filter(title='Paper Without Dept').exists())
+
+    def test_submission_create_rejects_invalid_department(self):
+        post_data = {
+            'title': 'Paper With Invalid Dept',
+            'abstract': 'Abstract here',
+            'keywords': 'test',
+            'department': 'NonExistent Engineering',
+            'supervisor_name': '',
+        }
+        resp = self.client.post(reverse('submissions:create'), post_data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.context['form'].errors.get('department'))
+        self.assertFalse(Submission.objects.filter(title='Paper With Invalid Dept').exists())
+
+    def test_submission_form_preserves_older_department_not_in_list(self):
+        from accounts.models import Department
+        from submissions.forms import SubmissionForm
+        old_dept, _ = Department.objects.get_or_create(name='Aerospace Engineering')
+        sub = Submission.objects.create(
+            title='Legacy Paper',
+            abstract='Legacy abstract',
+            primary_author=self.user,
+            department=old_dept,
+        )
+        form = SubmissionForm(instance=sub)
+        choice_values = [c[0] for c in form.fields['department'].choices]
+        self.assertIn('Aerospace Engineering', choice_values)
+        self.assertEqual(form.initial.get('department'), 'Aerospace Engineering')
+

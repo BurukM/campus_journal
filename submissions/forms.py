@@ -2,7 +2,8 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.core.validators import FileExtensionValidator
 
-from accounts.models import Role
+from accounts.models import Department, Role
+from campus_journal.constants import DepartmentChoiceField
 from .models import Review, Submission
 
 User = get_user_model()
@@ -28,6 +29,7 @@ class SubmissionForm(forms.ModelForm):
         label='Co-authors (usernames, comma-separated)',
         help_text='Optional. Each username must already have an account on the site.',
     )
+    department = DepartmentChoiceField()
 
     class Meta:
         model = Submission
@@ -35,6 +37,25 @@ class SubmissionForm(forms.ModelForm):
         widgets = {
             'abstract': forms.Textarea(attrs={'rows': 5}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.department:
+            current_name = self.instance.department.name
+            current_choices = [c[0] for c in self.fields['department'].choices]
+            if current_name not in current_choices:
+                self.fields['department'].choices = (
+                    list(self.fields['department'].choices) + [(current_name, current_name)]
+                )
+            if not self.is_bound:
+                self.initial['department'] = current_name
+
+    def clean_department(self):
+        dept_val = self.cleaned_data.get('department')
+        if not dept_val:
+            raise forms.ValidationError('Select your department.')
+        dept, _ = Department.objects.get_or_create(name=dept_val)
+        return dept
 
 
 class VersionUploadForm(forms.Form):
