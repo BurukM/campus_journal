@@ -7,7 +7,13 @@ from .models import Review, Submission
 
 User = get_user_model()
 
-MAX_UPLOAD_SIZE_MB = 50
+from django.conf import settings
+
+def get_max_upload_size_mb():
+    return getattr(settings, 'MAX_SUBMISSION_UPLOAD_SIZE_MB', 50)
+
+# Backward-compatibility alias
+MAX_UPLOAD_SIZE_MB = get_max_upload_size_mb()
 
 
 class SubmissionForm(forms.ModelForm):
@@ -48,8 +54,9 @@ class VersionUploadForm(forms.Form):
 
     def clean_file(self):
         f = self.cleaned_data['file']
-        if f.size > MAX_UPLOAD_SIZE_MB * 1024 * 1024:
-            raise forms.ValidationError(f'File is too large (max {MAX_UPLOAD_SIZE_MB} MB).')
+        max_mb = get_max_upload_size_mb()
+        if f.size > max_mb * 1024 * 1024:
+            raise forms.ValidationError(f'File is too large (max {max_mb} MB).')
         return f
 
 

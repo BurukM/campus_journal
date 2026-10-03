@@ -167,11 +167,32 @@ class SubmissionVersion(models.Model):
         (STATUS_NOT_FOUND, 'Design Brief PDF Not Found'),
     ]
 
+    UPLOAD_PENDING = 'PENDING'
+    UPLOAD_COMPLETED = 'COMPLETED'
+    UPLOAD_FAILED = 'FAILED'
+
+    UPLOAD_STATUS_CHOICES = [
+        (UPLOAD_PENDING, 'Pending'),
+        (UPLOAD_COMPLETED, 'Completed'),
+        (UPLOAD_FAILED, 'Failed'),
+    ]
+
     submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name='versions')
     version_number = models.PositiveIntegerField()
     file = models.FileField(
         upload_to=submission_version_upload_path,
         validators=[FileExtensionValidator(allowed_extensions=['zip', 'pdf'])],
+        blank=True,
+        null=True,
+    )
+    storage_path = models.CharField(
+        max_length=500, blank=True, help_text='Supabase Storage object path/key'
+    )
+    original_filename = models.CharField(max_length=255, blank=True)
+    content_type = models.CharField(max_length=100, blank=True)
+    file_size = models.PositiveBigIntegerField(default=0, help_text='File size in bytes')
+    upload_status = models.CharField(
+        max_length=30, choices=UPLOAD_STATUS_CHOICES, default=UPLOAD_COMPLETED
     )
     notes = models.TextField(blank=True, help_text='e.g. what changed since the last version')
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
@@ -192,6 +213,38 @@ class SubmissionVersion(models.Model):
 
     def __str__(self):
         return f'{self.submission} v{self.version_number}'
+
+    @property
+    def filename(self):
+        if self.original_filename:
+            return self.original_filename
+        if self.file:
+            import os
+            return os.path.basename(self.file.name)
+        if self.storage_path:
+            import os
+            return os.path.basename(self.storage_path)
+        return f'version_{self.version_number}'
+
+    def get_file_size_display(self):
+        size = self.file_size
+        if not size and self.file:
+            try:
+                size = self.file.size
+            except Exception:
+                size = 0
+        if not size:
+            return ''
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size < 1024:
+                return f"{size:.1f} {unit}" if unit != 'B' else f"{size} B"
+            size /= 1024
+        return f"{size:.1f} TB"
+
+    @property
+    def download_url(self):
+        from django.urls import reverse
+        return reverse('submissions:version_download', kwargs={'pk': self.submission_id, 'version_number': self.version_number})
 
 
 class AuditLogEntry(models.Model):

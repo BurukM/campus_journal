@@ -1,5 +1,7 @@
 import io
+import json
 import zipfile
+from unittest.mock import patch, MagicMock
 import pymupdf
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -178,34 +180,51 @@ class SubmissionWorkflowIntegrationTests(TestCase):
 
     def test_upload_version_compiles_technical_design_brief_automatically(self):
         zip_content = _create_sample_zip('Technical Design Brief 1.pdf')
-        uploaded = SimpleUploadedFile(
-            'solar_project.zip',
-            zip_content,
-            content_type='application/zip'
-        )
+        with patch('submissions.views.verify_storage_object') as mock_verify, \
+             patch('submissions.compiler.download_storage_object') as mock_download:
+            mock_verify.return_value = (True, {'size': len(zip_content), 'content_type': 'application/zip'})
+            mock_download.return_value = zip_content
 
-        url = reverse('submissions:upload_version', kwargs={'pk': self.submission.pk})
-        response = self.client.post(url, {'file': uploaded, 'notes': 'Initial files.'}, follow=True)
-        self.assertEqual(response.status_code, 200)
+            init_url = reverse('submissions:upload_init', kwargs={'pk': self.submission.pk})
+            init_resp = self.client.post(
+                init_url,
+                json.dumps({'filename': 'solar_project.zip', 'file_size': len(zip_content)}),
+                content_type='application/json'
+            )
+            self.assertEqual(init_resp.status_code, 200)
+            storage_path = init_resp.json()['storage_path']
 
-        version = self.submission.latest_version()
-        self.assertIsNotNone(version)
-        self.assertEqual(version.compilation_status, SubmissionVersion.STATUS_COMPILED)
-        self.assertEqual(version.brief_filename, 'Technical Design Brief 1.pdf')
-        self.assertTrue(len(version.compiled_html) > 0)
-        self.assertIn('class="pdf-active-link"', version.compiled_html)
+            complete_url = reverse('submissions:upload_complete', kwargs={'pk': self.submission.pk})
+            response = self.client.post(
+                complete_url,
+                json.dumps({
+                    'storage_path': storage_path,
+                    'original_filename': 'solar_project.zip',
+                    'file_size': len(zip_content),
+                    'notes': 'Initial files.',
+                }),
+                content_type='application/json'
+            )
+            self.assertEqual(response.status_code, 200)
 
-        # Verify Audit Log
-        audit_entry = self.submission.audit_log.filter(action='HTML_COMPILED').first()
-        self.assertIsNotNone(audit_entry)
-        self.assertIn('Technical Design Brief 1.pdf', audit_entry.message)
+            version = self.submission.latest_version()
+            self.assertIsNotNone(version)
+            self.assertEqual(version.compilation_status, SubmissionVersion.STATUS_COMPILED)
+            self.assertEqual(version.brief_filename, 'Technical Design Brief 1.pdf')
+            self.assertTrue(len(version.compiled_html) > 0)
+            self.assertIn('class="pdf-active-link"', version.compiled_html)
 
-        # Verify preview on submission detail page
-        detail_url = reverse('submissions:detail', kwargs={'pk': self.submission.pk})
-        detail_resp = self.client.get(detail_url)
-        self.assertEqual(detail_resp.status_code, 200)
-        self.assertContains(detail_resp, 'Compiled Technical Design Brief Preview')
-        self.assertContains(detail_resp, 'HTML Compiled: Technical Design Brief 1.pdf')
+            # Verify Audit Log
+            audit_entry = self.submission.audit_log.filter(action='HTML_COMPILED').first()
+            self.assertIsNotNone(audit_entry)
+            self.assertIn('Technical Design Brief 1.pdf', audit_entry.message)
+
+            # Verify preview on submission detail page
+            detail_url = reverse('submissions:detail', kwargs={'pk': self.submission.pk})
+            detail_resp = self.client.get(detail_url)
+            self.assertEqual(detail_resp.status_code, 200)
+            self.assertContains(detail_resp, 'Compiled Technical Design Brief Preview')
+            self.assertContains(detail_resp, 'HTML Compiled: Technical Design Brief 1.pdf')
 
     def test_upload_without_brief_sets_not_found_status(self):
         # Create a zip containing only unrelated files
@@ -214,51 +233,94 @@ class SubmissionWorkflowIntegrationTests(TestCase):
             zf.writestr('code.py', 'print("hello")')
             zf.writestr('other_doc.docx', 'word doc')
         buf.seek(0)
+        zip_bytes = buf.getvalue()
 
-        uploaded = SimpleUploadedFile(
-            'no_brief.zip',
-            buf.getvalue(),
-            content_type='application/zip'
-        )
+        with patch('submissions.views.verify_storage_object') as mock_verify, \
+             patch('submissions.compiler.download_storage_object') as mock_download:
+            mock_verify.return_value = (True, {'size': len(zip_bytes), 'content_type': 'application/zip'})
+            mock_download.return_value = zip_bytes
 
-        url = reverse('submissions:upload_version', kwargs={'pk': self.submission.pk})
-        response = self.client.post(url, {'file': uploaded}, follow=True)
-        self.assertEqual(response.status_code, 200)
+            init_url = reverse('submissions:upload_init', kwargs={'pk': self.submission.pk})
+            init_resp = self.client.post(
+                init_url,
+                json.dumps({'filename': 'no_brief.zip', 'file_size': len(zip_bytes)}),
+                content_type='application/json'
+            )
+            self.assertEqual(init_resp.status_code, 200)
+            storage_path = init_resp.json()['storage_path']
 
-        version = self.submission.latest_version()
-        self.assertEqual(version.compilation_status, SubmissionVersion.STATUS_NOT_FOUND)
-        self.assertIn('Could not find a PDF', version.compilation_error)
+            complete_url = reverse('submissions:upload_complete', kwargs={'pk': self.submission.pk})
+            response = self.client.post(
+                complete_url,
+                json.dumps({
+                    'storage_path': storage_path,
+                    'original_filename': 'no_brief.zip',
+                    'file_size': len(zip_bytes),
+                }),
+                content_type='application/json'
+            )
+            self.assertEqual(response.status_code, 200)
+
+            version = self.submission.latest_version()
+            self.assertEqual(version.compilation_status, SubmissionVersion.STATUS_NOT_FOUND)
+            self.assertIn('Could not find a PDF', version.compilation_error)
 
     def test_recompile_endpoint(self):
         zip_content = _create_sample_zip('technical_design_brief_2.pdf')
-        uploaded = SimpleUploadedFile(
-            'solar_project.zip',
-            zip_content,
-            content_type='application/zip'
-        )
-        self.client.post(
-            reverse('submissions:upload_version', kwargs={'pk': self.submission.pk}),
-            {'file': uploaded},
-            follow=True
-        )
+        with patch('submissions.views.verify_storage_object') as mock_verify, \
+             patch('submissions.compiler.download_storage_object') as mock_download:
+            mock_verify.return_value = (True, {'size': len(zip_content), 'content_type': 'application/zip'})
+            mock_download.return_value = zip_content
 
-        recompile_url = reverse('submissions:recompile', kwargs={'pk': self.submission.pk})
-        resp = self.client.post(recompile_url, follow=True)
-        self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, 'recompiled to responsive HTML successfully')
+            init_url = reverse('submissions:upload_init', kwargs={'pk': self.submission.pk})
+            init_resp = self.client.post(
+                init_url,
+                json.dumps({'filename': 'solar_project.zip', 'file_size': len(zip_content)}),
+                content_type='application/json'
+            )
+            storage_path = init_resp.json()['storage_path']
+
+            complete_url = reverse('submissions:upload_complete', kwargs={'pk': self.submission.pk})
+            self.client.post(
+                complete_url,
+                json.dumps({
+                    'storage_path': storage_path,
+                    'original_filename': 'solar_project.zip',
+                    'file_size': len(zip_content),
+                }),
+                content_type='application/json'
+            )
+
+            recompile_url = reverse('submissions:recompile', kwargs={'pk': self.submission.pk})
+            resp = self.client.post(recompile_url, follow=True)
+            self.assertEqual(resp.status_code, 200)
+            self.assertContains(resp, 'recompiled to responsive HTML successfully')
 
     def test_published_project_shows_compiled_html_publicly(self):
         zip_content = _create_sample_zip('Technical Design Brief.pdf')
-        uploaded = SimpleUploadedFile(
-            'project.zip',
-            zip_content,
-            content_type='application/zip'
-        )
-        self.client.post(
-            reverse('submissions:upload_version', kwargs={'pk': self.submission.pk}),
-            {'file': uploaded},
-            follow=True
-        )
+        with patch('submissions.views.verify_storage_object') as mock_verify, \
+             patch('submissions.compiler.download_storage_object') as mock_download:
+            mock_verify.return_value = (True, {'size': len(zip_content), 'content_type': 'application/zip'})
+            mock_download.return_value = zip_content
+
+            init_url = reverse('submissions:upload_init', kwargs={'pk': self.submission.pk})
+            init_resp = self.client.post(
+                init_url,
+                json.dumps({'filename': 'project.zip', 'file_size': len(zip_content)}),
+                content_type='application/json'
+            )
+            storage_path = init_resp.json()['storage_path']
+
+            complete_url = reverse('submissions:upload_complete', kwargs={'pk': self.submission.pk})
+            self.client.post(
+                complete_url,
+                json.dumps({
+                    'storage_path': storage_path,
+                    'original_filename': 'project.zip',
+                    'file_size': len(zip_content),
+                }),
+                content_type='application/json'
+            )
 
         # Move submission to PUBLISHED
         self.submission.status = Submission.PUBLISHED
@@ -345,3 +407,237 @@ class SubmissionWorkflowIntegrationTests(TestCase):
         empty_resp = anon_client.get(reverse('search') + '?q=nonexistenttermxyz')
         self.assertEqual(empty_resp.status_code, 200)
         self.assertEqual(len(empty_resp.context['projects']), 0)
+
+
+class DirectUploadLifecycleTests(TestCase):
+    def setUp(self):
+        self.author = User.objects.create_user(
+            username='author_user', email='author@example.com', password='password123'
+        )
+        self.other_user = User.objects.create_user(
+            username='other_user', email='other@example.com', password='password123'
+        )
+        self.submission = Submission.objects.create(
+            title='Direct Upload Test Paper',
+            abstract='Testing direct Supabase upload architecture.',
+            primary_author=self.author,
+            status=Submission.DRAFT,
+        )
+        self.client = Client()
+
+    def test_authorized_user_can_request_upload_permission(self):
+        self.client.login(username='author_user', password='password123')
+        url = reverse('submissions:upload_init', kwargs={'pk': self.submission.pk})
+
+        with patch('submissions.views.create_signed_upload_url') as mock_create_url:
+            mock_create_url.return_value = {
+                'upload_url': 'https://example.supabase.co/storage/v1/object/upload/sign/submission-files/test.zip?token=abc',
+                'token': 'abc',
+                'storage_path': f'submissions/{self.submission.pk}/v1/uuid/test.zip',
+                'bucket': 'submission-files',
+                'provider': 'supabase',
+            }
+
+            resp = self.client.post(
+                url,
+                json.dumps({'filename': 'project_files.zip', 'file_size': 1024 * 1024}),
+                content_type='application/json',
+            )
+            self.assertEqual(resp.status_code, 200)
+            data = resp.json()
+            self.assertIn('upload_url', data)
+            self.assertIn('storage_path', data)
+            self.assertIn('token', data)
+            self.assertTrue(data['storage_path'].startswith(f'submissions/{self.submission.pk}/'))
+
+    def test_unauthorized_user_cannot_request_upload_permission(self):
+        self.client.login(username='other_user', password='password123')
+        url = reverse('submissions:upload_init', kwargs={'pk': self.submission.pk})
+
+        resp = self.client.post(
+            url,
+            json.dumps({'filename': 'project_files.zip', 'file_size': 1024}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertIn('error', resp.json())
+
+    def test_anonymous_user_cannot_request_upload_permission(self):
+        url = reverse('submissions:upload_init', kwargs={'pk': self.submission.pk})
+        resp = self.client.post(
+            url,
+            json.dumps({'filename': 'project_files.zip', 'file_size': 1024}),
+            content_type='application/json',
+        )
+        # Should redirect to login
+        self.assertEqual(resp.status_code, 302)
+
+    def test_invalid_file_type_is_rejected(self):
+        self.client.login(username='author_user', password='password123')
+        url = reverse('submissions:upload_init', kwargs={'pk': self.submission.pk})
+
+        for bad_filename in ['script.exe', 'malicious.sh', 'data.csv', 'archive.tar.gz']:
+            resp = self.client.post(
+                url,
+                json.dumps({'filename': bad_filename, 'file_size': 1024}),
+                content_type='application/json',
+            )
+            self.assertEqual(resp.status_code, 400)
+            self.assertIn('Invalid file type', resp.json()['error'])
+
+    def test_requested_file_size_over_limit_is_rejected(self):
+        self.client.login(username='author_user', password='password123')
+        url = reverse('submissions:upload_init', kwargs={'pk': self.submission.pk})
+
+        # 51 MB when limit is 50 MB
+        oversized = 51 * 1024 * 1024
+        resp = self.client.post(
+            url,
+            json.dumps({'filename': 'big_project.zip', 'file_size': oversized}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('File is too large', resp.json()['error'])
+
+    def test_configurable_file_size_limit(self):
+        self.client.login(username='author_user', password='password123')
+        url = reverse('submissions:upload_init', kwargs={'pk': self.submission.pk})
+
+        # Override limit to 10 MB
+        with self.settings(MAX_SUBMISSION_UPLOAD_SIZE_MB=10):
+            resp = self.client.post(
+                url,
+                json.dumps({'filename': 'project.zip', 'file_size': 12 * 1024 * 1024}),
+                content_type='application/json',
+            )
+            self.assertEqual(resp.status_code, 400)
+            self.assertIn('10 MB', resp.json()['error'])
+
+    def test_upload_completion_verifies_object_before_creating_version(self):
+        self.client.login(username='author_user', password='password123')
+        complete_url = reverse('submissions:upload_complete', kwargs={'pk': self.submission.pk})
+        storage_path = f"submissions/{self.submission.pk}/v1/uuid123/project.zip"
+
+        with patch('submissions.views.verify_storage_object') as mock_verify, \
+             patch('submissions.compiler.download_storage_object') as mock_download:
+            mock_verify.return_value = (True, {'size': 2048, 'content_type': 'application/zip'})
+            mock_download.return_value = _create_sample_zip('Technical Design Brief.pdf')
+
+            resp = self.client.post(
+                complete_url,
+                json.dumps({
+                    'storage_path': storage_path,
+                    'original_filename': 'my_paper.zip',
+                    'file_size': 2048,
+                    'notes': 'Version 1 notes',
+                }),
+                content_type='application/json',
+            )
+            self.assertEqual(resp.status_code, 200)
+            data = resp.json()
+            self.assertTrue(data['success'])
+            self.assertEqual(data['version_number'], 1)
+
+            # Check database record
+            version = self.submission.latest_version()
+            self.assertIsNotNone(version)
+            self.assertEqual(version.version_number, 1)
+            self.assertEqual(version.storage_path, storage_path)
+            self.assertEqual(version.original_filename, 'my_paper.zip')
+            self.assertEqual(version.file_size, 2048)
+            self.assertEqual(version.upload_status, SubmissionVersion.UPLOAD_COMPLETED)
+            self.assertEqual(version.notes, 'Version 1 notes')
+            self.submission.refresh_from_db()
+            self.assertEqual(self.submission.current_version_number, 1)
+
+    def test_upload_completion_failure_does_not_create_false_record(self):
+        self.client.login(username='author_user', password='password123')
+        complete_url = reverse('submissions:upload_complete', kwargs={'pk': self.submission.pk})
+        storage_path = f"submissions/{self.submission.pk}/v1/uuid123/phantom.zip"
+
+        with patch('submissions.views.verify_storage_object') as mock_verify:
+            # Storage says object does not exist!
+            mock_verify.return_value = (False, {'error': 'Object not found in storage'})
+
+            resp = self.client.post(
+                complete_url,
+                json.dumps({
+                    'storage_path': storage_path,
+                    'original_filename': 'phantom.zip',
+                    'file_size': 1024,
+                }),
+                content_type='application/json',
+            )
+            self.assertEqual(resp.status_code, 400)
+            self.assertIn('Object not found in storage', resp.json()['error'])
+
+            # Verify NO version was created
+            self.assertEqual(self.submission.versions.count(), 0)
+            self.assertEqual(self.submission.current_version_number, 0)
+
+    def test_upload_completion_rejects_path_traversal_or_wrong_submission(self):
+        self.client.login(username='author_user', password='password123')
+        complete_url = reverse('submissions:upload_complete', kwargs={'pk': self.submission.pk})
+
+        # Wrong submission id in storage path
+        resp = self.client.post(
+            complete_url,
+            json.dumps({'storage_path': 'submissions/9999/v1/bad.zip'}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 400)
+
+        # Path traversal
+        resp = self.client.post(
+            complete_url,
+            json.dumps({'storage_path': f'submissions/{self.submission.pk}/../secret.zip'}),
+            content_type='application/json',
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    def test_private_file_download_authorization(self):
+        storage_path = f"submissions/{self.submission.pk}/v1/uuid/paper.zip"
+        version = SubmissionVersion.objects.create(
+            submission=self.submission,
+            version_number=1,
+            storage_path=storage_path,
+            original_filename='paper.zip',
+            file_size=1024,
+            upload_status=SubmissionVersion.UPLOAD_COMPLETED,
+            uploaded_by=self.author,
+        )
+
+        dl_url = reverse('submissions:version_download', kwargs={'pk': self.submission.pk, 'version_number': 1})
+
+        # 1. Anonymous user cannot download unpublished paper -> redirect to login
+        anon_client = Client()
+        anon_resp = anon_client.get(dl_url)
+        self.assertEqual(anon_resp.status_code, 302)
+
+        # 2. Unauthorized user gets 403 Forbidden
+        other_client = Client()
+        other_client.login(username='other_user', password='password123')
+        other_resp = other_client.get(dl_url)
+        self.assertEqual(other_resp.status_code, 403)
+
+        # 3. Author gets signed download URL redirect
+        author_client = Client()
+        author_client.login(username='author_user', password='password123')
+
+        with patch('submissions.views.is_supabase_configured', return_value=True), \
+             patch('submissions.views.create_signed_download_url') as mock_signed_dl:
+            mock_signed_dl.return_value = 'https://supabase.example.co/download/signed?token=xyz'
+            author_resp = author_client.get(dl_url)
+            self.assertEqual(author_resp.status_code, 302)
+            self.assertEqual(author_resp['Location'], 'https://supabase.example.co/download/signed?token=xyz')
+
+    def test_legacy_upload_endpoint_rejects_multipart_files(self):
+        self.client.login(username='author_user', password='password123')
+        url = reverse('submissions:upload_version', kwargs={'pk': self.submission.pk})
+
+        uploaded = SimpleUploadedFile('file.zip', b'fake-content', content_type='application/zip')
+        resp = self.client.post(url, {'file': uploaded}, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Direct file uploads via the browser are required')
+        # Ensure no version was created
+        self.assertEqual(self.submission.versions.count(), 0)

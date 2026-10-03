@@ -21,6 +21,8 @@ import zipfile
 import pymupdf
 from django.utils import timezone
 
+from .storage import download_storage_object
+
 
 class BriefFileNotFoundError(Exception):
     """Raised when no suitable Technical Design Brief PDF is found in the archive."""
@@ -86,9 +88,9 @@ def find_technical_design_brief_file(file_names):
     return None
 
 
-def extract_pdf_bytes_from_file(uploaded_file):
+def extract_pdf_bytes_from_data(file_bytes, filename=''):
     """
-    Given a Django File or FieldFile, extract the PDF bytes of the Technical Design Brief.
+    Given raw bytes and filename, extract the PDF bytes of the Technical Design Brief.
     Supports:
     - .zip archives containing the project files and the PDF.
     - Direct .pdf uploads.
@@ -98,15 +100,9 @@ def extract_pdf_bytes_from_file(uploaded_file):
     Raises:
         BriefFileNotFoundError if no matching PDF is found.
     """
-    filename = getattr(uploaded_file, 'name', '') or ''
-    uploaded_file.seek(0)
-    file_bytes = uploaded_file.read()
-
-    # Direct PDF upload check
     if filename.lower().endswith('.pdf') or file_bytes.startswith(b'%PDF'):
         return file_bytes, os.path.basename(filename) or 'technical_design_brief.pdf'
 
-    # ZIP archive extraction
     try:
         with zipfile.ZipFile(io.BytesIO(file_bytes), 'r') as zf:
             namelist = zf.namelist()
@@ -122,10 +118,19 @@ def extract_pdf_bytes_from_file(uploaded_file):
             pdf_bytes = zf.read(matched_name)
             return pdf_bytes, os.path.basename(matched_name)
     except zipfile.BadZipFile:
-        # Check if maybe it's a PDF despite extension
         if file_bytes.startswith(b'%PDF'):
             return file_bytes, os.path.basename(filename) or 'technical_design_brief.pdf'
         raise BriefCompilationError("Uploaded file is not a valid .zip archive or .pdf document.")
+
+
+def extract_pdf_bytes_from_file(uploaded_file):
+    """
+    Given a Django File or FieldFile, extract the PDF bytes of the Technical Design Brief.
+    """
+    filename = getattr(uploaded_file, 'name', '') or ''
+    uploaded_file.seek(0)
+    file_bytes = uploaded_file.read()
+    return extract_pdf_bytes_from_data(file_bytes, filename)
 
 
 def compile_pdf_to_html(pdf_bytes_or_path, title='Technical Design Brief'):
@@ -332,14 +337,37 @@ def compile_submission_version(version):
     """
     from .models import AuditLogEntry
 
-    if not version.file:
+    file_bytes = None
+    filename = ''
+
+    if version.storage_path:
+        try:
+            file_bytes = download_storage_object(version.storage_path)
+            filename = version.original_filename or os.path.basename(version.storage_path)
+        except Exception as exc:
+            version.compilation_status = version.STATUS_FAILED
+            version.compilation_error = f'Failed to retrieve file from storage: {exc}'
+            version.save(update_fields=['compilation_status', 'compilation_error'])
+            return False
+    elif version.file:
+        try:
+            version.file.seek(0)
+            file_bytes = version.file.read()
+            filename = version.file.name
+        except Exception as exc:
+            version.compilation_status = version.STATUS_FAILED
+            version.compilation_error = f'Failed to read attached file: {exc}'
+            version.save(update_fields=['compilation_status', 'compilation_error'])
+            return False
+
+    if not file_bytes:
         version.compilation_status = version.STATUS_FAILED
-        version.compilation_error = 'No uploaded file attached to this version.'
+        version.compilation_error = 'No uploaded file or storage object attached to this version.'
         version.save(update_fields=['compilation_status', 'compilation_error'])
         return False
 
     try:
-        pdf_bytes, matched_name = extract_pdf_bytes_from_file(version.file)
+        pdf_bytes, matched_name = extract_pdf_bytes_from_data(file_bytes, filename)
         compiled_html = compile_pdf_to_html(
             pdf_bytes,
             title=f"{version.submission.title} — Technical Design Brief (v{version.version_number})"

@@ -99,14 +99,30 @@
   <div style="background: #e7f5ff; border: 1px solid #74c0fc; border-left: 4px solid #1c7ed6; padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; font-size: 14px; color: #1864ab;">
     <strong>Upload Instruction:</strong> Please include a PDF file named <strong>Technical Design Brief.pdf</strong> (or <strong>Design Brief.pdf</strong>) inside your uploaded package (.zip archive or .pdf). The system will automatically compile it into responsive, interactive HTML for publication.
   </div>
-  <form method="post" action="{% url 'submissions:upload_version' pk=submission.pk %}" enctype="multipart/form-data">
+  <form id="submission-upload-form" method="post" action="{% url 'submissions:upload_version' pk=submission.pk %}">
     {% csrf_token %}
-    <label for="{{ upload_form.file.id_for_label }}">Submission package (.zip or .pdf)</label>
-    {{ upload_form.file }}
-    <p class="muted">{{ upload_form.file.help_text }}</p>
-    <label for="{{ upload_form.notes.id_for_label }}">Notes</label>
-    {{ upload_form.notes }}
-    <button type="submit">Upload version</button>
+    <label for="id_file">Submission package (.zip or .pdf)</label>
+    <input type="file" name="file" id="id_file" accept=".zip,.pdf" required>
+    <p class="muted">Upload a .zip package containing your project files (or a .pdf). Maximum allowed size: {{ max_upload_size_mb }} MB.</p>
+    <label for="id_notes">Notes</label>
+    <textarea name="notes" id="id_notes" rows="2" placeholder="Optional: what changed since the last version."></textarea>
+
+    <!-- Upload Progress and Status Feedback -->
+    <div id="upload-feedback" style="display:none; margin: 16px 0;">
+      <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+        <span id="upload-status-text" style="font-weight: 600; color: var(--accent, #0969da);">Preparing direct upload...</span>
+        <span id="upload-percent-text" style="font-weight: 600; color: var(--muted, #586069);">0%</span>
+      </div>
+      <div style="background: #e2e8f0; border-radius: 9999px; height: 8px; overflow: hidden;">
+        <div id="upload-progress-bar" style="background: var(--accent, #0969da); width: 0%; height: 100%; transition: width 0.15s ease;"></div>
+      </div>
+    </div>
+
+    <!-- Error message display -->
+    <div id="upload-error-alert" style="display:none; background: #fee2e2; border: 1px solid #f87171; border-left: 4px solid #dc2626; color: #991b1b; padding: 12px 16px; border-radius: 4px; margin: 16px 0; font-size: 14px;">
+    </div>
+
+    <button type="submit" id="upload-submit-btn">Upload version</button>
   </form>
 </div>
 {% endif %}
@@ -142,8 +158,9 @@
   {% for v in versions %}
     <div style="padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
       <p style="margin: 0 0 4px;">
-        <strong>v{{ v.version_number }}</strong> — <a href="{{ v.file.url }}">{{ v.file.name|slice:"-40:" }}</a>
-        <span class="muted">uploaded {{ v.uploaded_at|date:"M j, Y H:i" }} by {{ v.uploaded_by }}</span>
+        <strong>v{{ v.version_number }}</strong> — <a href="{{ v.download_url }}">{{ v.filename }}</a>
+        {% if v.file_size %}<span class="muted" style="font-size: 12px; margin-left: 4px;">({{ v.get_file_size_display }})</span>{% endif %}
+        <span class="muted" style="margin-left: 6px;">uploaded {{ v.uploaded_at|date:"M j, Y H:i" }} by {{ v.uploaded_by }}</span>
         {% if v.compilation_status == "COMPILED" %}
           <span class="role-badge" style="background:#dafbe1; color:#1a7f37; border-color:#aceebb; margin-left: 8px;">HTML Compiled: {{ v.brief_filename }}</span>
         {% elif v.compilation_status == "NOT_FOUND" %}
@@ -191,4 +208,161 @@
     <p class="muted">No history yet.</p>
   {% endfor %}
 </div>
+
+<script>
+(function() {
+  const uploadForm = document.getElementById('submission-upload-form');
+  if (!uploadForm) return;
+
+  const fileInput = document.getElementById('id_file');
+  const notesInput = document.getElementById('id_notes');
+  const submitBtn = document.getElementById('upload-submit-btn');
+  const feedback = document.getElementById('upload-feedback');
+  const progressBar = document.getElementById('upload-progress-bar');
+  const statusText = document.getElementById('upload-status-text');
+  const percentText = document.getElementById('upload-percent-text');
+  const errorAlert = document.getElementById('upload-error-alert');
+
+  function showError(msg) {
+    errorAlert.textContent = msg;
+    errorAlert.style.display = 'block';
+    feedback.style.display = 'none';
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Upload version';
+  }
+
+  uploadForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    errorAlert.style.display = 'none';
+
+    const file = fileInput.files[0];
+    if (!file) {
+      showError('Please select a file to upload.');
+      return;
+    }
+
+    const maxMb = {{ max_upload_size_mb|default:50 }};
+    if (file.size > maxMb * 1024 * 1024) {
+      showError(`File is too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). Maximum allowed size is ${maxMb} MB.`);
+      return;
+    }
+
+    const validExtensions = ['.zip', '.pdf'];
+    const lowerName = file.name.toLowerCase();
+    if (!validExtensions.some(ext => lowerName.endsWith(ext))) {
+      showError('Invalid file type. Only .zip and .pdf files are accepted.');
+      return;
+    }
+
+    // Step 1: Initialize upload with Django (get signed upload URL)
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Uploading...';
+    feedback.style.display = 'block';
+    statusText.textContent = 'Requesting secure upload authorization...';
+    progressBar.style.width = '5%';
+    percentText.textContent = '5%';
+
+    const csrfToken = uploadForm.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    let initData;
+    try {
+      const initResp = await fetch("{% url 'submissions:upload_init' pk=submission.pk %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          file_size: file.size,
+          content_type: file.type || 'application/octet-stream',
+        }),
+      });
+
+      initData = await initResp.json();
+      if (!initResp.ok || initData.error) {
+        throw new Error(initData.error || 'Failed to initialize upload.');
+      }
+    } catch (err) {
+      showError('Authorization error: ' + err.message);
+      return;
+    }
+
+    // Step 2: Direct client upload to Supabase Storage (PUT with raw file bytes)
+    statusText.textContent = 'Uploading directly to secure storage...';
+
+    try {
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', initData.upload_url, true);
+        if (file.type) {
+          xhr.setRequestHeader('Content-Type', file.type);
+        } else if (file.name.toLowerCase().endsWith('.pdf')) {
+          xhr.setRequestHeader('Content-Type', 'application/pdf');
+        } else {
+          xhr.setRequestHeader('Content-Type', 'application/zip');
+        }
+
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) {
+            const pct = Math.min(95, Math.max(5, Math.round((evt.loaded / evt.total) * 90) + 5));
+            progressBar.style.width = pct + '%';
+            percentText.textContent = pct + '%';
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`Storage service error (${xhr.status}): ${xhr.statusText || 'Upload failed'}`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error('Network error during storage upload. Please check your connection.'));
+        xhr.ontimeout = () => reject(new Error('Upload timed out.'));
+        xhr.send(file);
+      });
+    } catch (err) {
+      showError('Storage upload error: ' + err.message);
+      return;
+    }
+
+    // Step 3: Complete upload and verify on Django backend
+    statusText.textContent = 'Verifying upload with server...';
+    progressBar.style.width = '98%';
+    percentText.textContent = '98%';
+
+    try {
+      const completeResp = await fetch("{% url 'submissions:upload_complete' pk=submission.pk %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+          storage_path: initData.storage_path,
+          original_filename: file.name,
+          file_size: file.size,
+          content_type: file.type || 'application/octet-stream',
+          notes: notesInput.value,
+        }),
+      });
+
+      const completeData = await completeResp.json();
+      if (!completeResp.ok || completeData.error) {
+        throw new Error(completeData.error || 'Server could not verify the uploaded file.');
+      }
+
+      progressBar.style.width = '100%';
+      percentText.textContent = '100%';
+      statusText.textContent = 'Upload verified! Refreshing...';
+
+      window.location.href = completeData.redirect_url || window.location.href;
+    } catch (err) {
+      showError('Verification error: ' + err.message);
+    }
+  });
+})();
+</script>
 {% endblock %}

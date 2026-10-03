@@ -135,3 +135,11 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# --------------------------------------------------------------------------
+# Supabase Storage Configuration
+# --------------------------------------------------------------------------
+SUPABASE_URL = config('SUPABASE_URL', default='')
+SUPABASE_SECRET_KEY = config('SUPABASE_SECRET_KEY', default='')
+SUPABASE_STORAGE_BUCKET = config('SUPABASE_STORAGE_BUCKET', default='submission-files')
+MAX_SUBMISSION_UPLOAD_SIZE_MB = config('MAX_SUBMISSION_UPLOAD_SIZE_MB', default=50, cast=int)
