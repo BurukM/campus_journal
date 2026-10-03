@@ -11,6 +11,9 @@ CATEGORIES = [
     ('Technology & Innovation', 'technology-innovation', 'Hardware prototypes, robotics, AI tools, and software engineering.'),
     ('Student Spotlights', 'student-spotlights', 'Profiles of student researchers, capstone teams, and competition winners.'),
     ('Engineering & Design', 'engineering-design', 'Design briefs, technical challenges, and prototyping projects.'),
+    ('Club Announcement', 'club-announcement', 'Announcements, events, and updates from campus clubs and student organizations.'),
+    ('New Project', 'new-project', 'Showcases and launches of new student and faculty engineering projects.'),
+    ('General', 'general', 'General campus news, announcements, and university updates.'),
 ]
 
 

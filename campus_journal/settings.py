@@ -6,6 +6,7 @@ Configuration is environment-driven so the same codebase runs on SQLite
 locally and PostgreSQL in staging/production (see .env.example).
 """
 
+import os
 from pathlib import Path
 from decouple import config, Csv
 import dj_database_url
@@ -124,7 +125,7 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 STORAGES = {
     'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        'BACKEND': 'campus_journal.storage.SupabaseMediaStorage',
     },
     'staticfiles': {
         'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
@@ -132,7 +133,10 @@ STORAGES = {
 }
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+if os.environ.get('VERCEL') or not os.access(BASE_DIR, os.W_OK):
+    MEDIA_ROOT = Path('/tmp/media')
+else:
+    MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
